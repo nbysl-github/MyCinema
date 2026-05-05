@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package mycinema;
+
+option go_package = "github.com/mycinema/protos;mycinema";
+
+// ===== 隐藏视频列表 (hidden_series.json) =====
+
+message HiddenSeriesFile {
+  repeated string paths = 1;     // 隐藏的视频/系列路径列表
+}

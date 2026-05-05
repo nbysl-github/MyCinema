@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <script src="/static/icons.js"></script>
+    <script>
+        async function handleCoverError(img, isDetail) {
+            const wrap = img.parentElement;
+            if (isDetail) {
+                wrap.innerHTML = '<div class="detail-cover-placeholder"><i data-lucide="film"></i></div>';
+            } else {
+                // 尝试后台生成缩略图
+                const originalSrc = img.getAttribute('src') || '';
+                // 从完整 URL 或相对路径中提取路径部分
+                let pathPart = originalSrc;
+                if (originalSrc.startsWith('http')) {
+                    try {
+                        const url = new URL(originalSrc);
+                        pathPart = url.pathname;
+                    } catch(e) {
+                        pathPart = '';
+                    }
+                }
+                
+                // 匹配 /cover/abs/xxx_thumb.jpg 或 /cover/xxx_thumb.jpg
+                const thumbMatch = pathPart.match(/\/cover(?:\/abs\/(.+?))\/([^\/]+)_thumb\.jpg$/);
+                if (thumbMatch) {
+                    const dir = decodeURIComponent(thumbMatch[1]) || '';  // URL 解码
+                    const videoName = decodeURIComponent(thumbMatch[2]).replace('_thumb', '');
+                    const isAbs = pathPart.includes('/cover/abs/');
+                    
+                    try {
+                        const resp = await fetch('/api/cover/generate', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({dir: dir, videoName: videoName, isAbs: isAbs})
+                        });
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (data.ok) {
+                                // 生成成功，刷新缩略图（添加时间戳避免缓存）
+                                setTimeout(() => {
+                                    img.src = originalSrc + (originalSrc.includes('?') ? '&' : '?') + 't=' + Date.now();
+                                    img.onerror = null;
+                                }, 1000);  // 延迟 1 秒确保文件已写入磁盘
+                                return;
+                            }
+                        }
+                    } catch(e) {
+                        console.warn('缩略图生成失败:', e);
+                    }
+                }
+                // 生成失败或无法生成，显示占位符
+                wrap.innerHTML = '<div class="card-cover-placeholder"><div class="icon"><i data-lucide="film"></i></div><div class="text">暂无封面</div></div>';
+            }
+            initIcons();
+        }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        /* ===== 主题变量（Win11 亮/暗模式适配）==== */
+        :root {
+            --bg-body: #f1f2f3;
+            --bg-nav: #ffffff;
+            --bg-card: #e8eaed;
+            --bg-card-hover: #dcdfe3;
+            --bg-placeholder-start: #ececec;
+            --bg-placeholder-end: #d8d8d8;
+            --text-primary: #18191c;
+            --text-secondary: #61666d;
+            --border-color: #e3e5e7;
+            --shadow: 0 4px 16px rgba(0,0,0,0.10);
+            --nav-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --brand-color: #fb7299;
+            --search-bg: #f1f2f3;
+            --search-focus-border: #fb7299;
+            --badge-bg: rgba(0,0,0,0.55);
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-body: {{ bili_colors.bg_deep }};
+                --bg-nav: {{ bili_colors.bg_normal }};
+                --bg-card: {{ bili_colors.bg_card }};
+                --bg-card-hover: rgba(255,255,255,0.06);
+                --bg-placeholder-start: {{ bili_colors.bg_normal }};
+                --bg-placeholder-end: {{ bili_colors.bg_card }};
+                --text-primary: #fff;
+                --text-secondary: {{ bili_colors.text_secondary }};
+                --border-color: {{ bili_colors.divider }};
+                --shadow: 0 4px 16px rgba(0,0,0,0.35);
+                --nav-shadow: 0 2px 8px rgba(0,0,0,0.25);
+                --brand-color: {{ bili_colors.brand_pink }};
+                --search-bg: {{ bili_colors.bg_card }};
+                --search-focus-border: {{ bili_colors.brand_pink }};
+                --badge-bg: rgba(0,0,0,0.72);
+            }
+        }
+
+        body {
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary); min-height: 100vh;
+        }
+
+        /* ===== 顶部导航 ===== */
+        .top-nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            height: 64px;
+            background-color: var(--bg-nav);
+            box-shadow: var(--nav-shadow);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+        }
+        .logo { font-size: 22px; font-weight: 700; color: var(--brand-color); margin-right: 20px; cursor: pointer; text-decoration: none; animation: logoBreath 3s ease-in-out infinite; }
+        @keyframes logoBreath { 0%, 100% { color: var(--brand-color); filter: brightness(0.95); } 50% { color: var(--brand-color); filter: brightness(1.15); } }
+        .nav-search-form {
+            flex: 1;
+            max-width: 500px;
+        }
+        .nav-search-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .nav-search {
+            width: 100%; height: 40px;
+            background-color: var(--search-bg);
+            border-radius: 8px; border: none;
+            padding: 0 44px 0 16px; font-size: 14px; color: var(--text-primary);
+            transition: all 0.3s;
+            box-sizing: border-box;
+        }
+        .nav-search:focus { outline: none; background-color: var(--bg-nav); border: 2px solid var(--search-focus-border); }
+        .nav-search-btn {
+            position: absolute;
+            right: 8px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 4px 8px;
+            color: var(--text-secondary);
+            opacity: 0.8;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+        }
+        .nav-search-btn i { width: 18px; height: 18px; }
+        .nav-search-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-nav);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-top: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: var(--shadow);
+            display: none;
+        }
+        .nav-search-suggestions.show { display: block; }
+        .suggestion-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--text-primary);
+            transition: background 0.15s;
+        }
+        .suggestion-item:hover { background: var(--bg-card-hover); }
+        .suggestion-item .highlight { color: var(--brand-color); font-weight: 600; }
+        .nav-search-btn:hover { opacity: 1; }
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+        }
+        .settings-btn {
+            background: none; border: none;
+            font-size: 22px; cursor: pointer;
+            padding: 6px 10px; border-radius: 6px;
+            transition: all 0.2s; text-decoration: none;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+        .settings-btn i, .nav-fav-btn i { width: 20px; height: 20px; }
+        .settings-btn:hover { background: var(--bg-card); transform: rotate(30deg); }
+        .nav-fav-btn {
+            background: none; border: none;
+            font-size: 22px; cursor: pointer;
+            padding: 6px 10px; border-radius: 6px;
+            transition: all 0.2s; flex-shrink: 0;
+            display: flex;
+            align-items: center;
+        }
+        .nav-fav-btn:hover { background: var(--bg-card); }
+        .nav-fav-btn.active { color: #FFD700; }
+
+        /* 收藏面板 */
+        .fav-panel {
+            position: fixed; top: 64px; right: 20px; width: 320px;
+            background: var(--bg-nav); border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3); z-index: 1001;
+            display: none; max-height: 500px; overflow-y: auto;
+        }
+        .fav-panel.show { display: block; }
+        .fav-panel-header {
+            padding: 14px 16px; border-bottom: 1px solid var(--border-color);
+            font-weight: 600; font-size: 15px; display: flex; justify-content: space-between; align-items: center;
+        }
+        .fav-panel-header > span {
+            display: flex; align-items: center; gap: 6px;
+        }
+        .fav-panel-close, .fav-clear-btn {
+            background: none; border: none; cursor: pointer; color: var(--text-secondary);
+            padding: 4px 6px; border-radius: 4px; transition: all 0.15s;
+            display: flex; align-items: center;
+        }
+        .fav-panel-close i, .fav-clear-btn i { width: 18px; height: 18px; }
+        .fav-panel-close:hover, .fav-clear-btn:hover { background: var(--bg-card); color: var(--text-primary); }
+        .fav-panel-list { padding: 8px 0; }
+        .fav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 16px; cursor: pointer; transition: background 0.15s;
+        }
+        .fav-item:hover { background: var(--bg-card-hover); }
+        .fav-item-thumb {
+            width: 48px; height: 27px; object-fit: cover;
+            border-radius: 4px; background: var(--bg-card); flex-shrink: 0;
+        }
+        .fav-item-thumb.landscape { object-fit: cover; }
+        .fav-item-thumb.portrait { width: 20px; height: 36px; object-fit: contain; background: transparent; }
+        .fav-item-icon { display: flex; align-items: center; }
+        .fav-item-icon i { width: 24px; height: 24px; }
+        .fav-item-info { flex: 1; min-width: 0; }
+        .fav-item-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .fav-item-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .fav-item-del {
+            background: none; border: none; color: var(--text-secondary); cursor: pointer;
+            padding: 4px; opacity: 0; border-radius: 4px; transition: all 0.15s;
+            display: flex; align-items: center;
+        }
+        .fav-item-del i { width: 16px; height: 16px; }
+        .fav-item:hover .fav-item-del { opacity: 1; }
+        .fav-item-del:hover { color: #e74c3c; background: rgba(231,76,60,0.1); }
+        .fav-empty { padding: 30px 16px; text-align: center; color: var(--text-secondary); font-size: 14px; }
+        .fav-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;
+        }
+
+        .nav-cats {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .nav-cat-btn {
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .nav-sort-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .nav-sort-select {
+            height: 32px;
+            background: var(--search-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0 28px 0 10px;
+            font-size: 13px;
+            color: var(--text-primary);
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239499A0' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 8px center;
+        }
+        .nav-sort-select:focus {
+            outline: none;
+            border-color: var(--brand-color);
+        }
+        .nav-cat-btn:hover { opacity: 0.8; transform: scale(1.05); color: var(--brand-color); }
+        .nav-cat-btn:hover svg { color: var(--brand-color) !important; }
+        .nav-cat-btn.active { background: var(--brand-color); color: #fff; }
+
+        /* ===== 主内容区 ===== */
+        .main-content { margin-top: 84px; padding: 0 20px 40px; }
+
+        /* 页面标题 */
+        .page-header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .page-header-left h1 { font-size: 24px; font-weight: 600; color: var(--text-primary); }
+        .page-header-left p { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
+
+        /* 分类筛选标签 */
+        .category-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+        .cat-tab {
+            padding: 6px 16px; border-radius: 20px; font-size: 13px;
+            cursor: pointer; transition: all 0.2s; border: 1px solid transparent;
+            white-space: nowrap; user-select: none;
+            color: var(--text-primary); background: var(--bg-card);
+        }
+        .cat-tab:hover { background: var(--bg-card-hover); }
+        .cat-tab.active {
+            color: #fff; font-weight: 600; border-color: transparent;
+        }
+
+        /* 分类区块 */
+        .category-section { margin-bottom: 36px; }
+        .section-title-bar {
+            display: flex; align-items: center; gap: 8px;
+            margin-bottom: 14px; padding-left: 4px;
+        }
+        .section-icon { display: flex; align-items: center; }
+        .section-icon i { width: 22px; height: 22px; }
+        .nav-cat-icon { display: inline-flex; align-items: center; margin-right: 4px; }
+        .nav-cat-icon i { width: 16px; height: 16px; }
+        .section-name { font-size: 18px; font-weight: 600; color: var(--text-primary); }
+        .section-count { font-size: 12px; color: var(--text-secondary); background: var(--bg-card); padding: 2px 10px; border-radius: 10px; }
+        .section-divider { width: 36px; height: 3px; border-radius: 2px; margin-bottom: 18px; }
+
+        /* 剧集网格 */
+        .series-grid {
+            display: grid;
+            gap: 20px 16px;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        }
+
+        @media (max-width: 600px) {
+            .series-grid {
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 12px 10px;
+            }
+            .series-grid.landscape-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            }
+        }
+
+        /* 横向视频的网格项更宽 */
+        .series-grid.landscape-grid {
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        }
+
+        /* 剧集卡片 */
+        .series-card {
+            cursor: pointer;
+            text-decoration: none; color: inherit;
+            display: block;
+            transition: transform 0.25s ease;
+        }
+        .series-card:hover { transform: translateY(-4px); }
+        /* 七色霓虹跑马灯 */
+        @property --neon-angle {
+            syntax: '<angle>';
+            initial-value: 0deg;
+            inherits: false;
+        }
+        .card-cover-wrap {
+            width: 100%; aspect-ratio: 9/16;
+            border-radius: 6px;
+            background-color: var(--bg-card);
+            position: relative;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+            transition: all 0.25s ease;
+        }
+        .card-cover-wrap::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 8px;
+            background: conic-gradient(
+                from var(--neon-angle),
+                #ff0000, #ff7f00, #ffff00, #00ff00,
+                #00ffff, #0000ff, #8b00ff, #ff0000
+            );
+            opacity: 0;
+            z-index: 0;
+            animation: neon-spin 2s linear infinite;
+            transition: opacity 0.3s ease;
+        }
+        .series-card:hover .card-cover-wrap::before {
+            opacity: 1;
+        }
+        /* 图片和占位符自身裁剪圆角，不依赖父容器 overflow:hidden */
+        .card-cover-img, .card-cover-placeholder {
+            position: relative;
+            z-index: 1;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .card-cover-wrap .res-tag,
+        .card-cover-wrap .episode-badge,
+        .card-cover-wrap .card-favorite-btn,
+        .card-cover-wrap .card-detail-btn,
+        .card-cover-wrap .card-delete-btn {
+            z-index: 2;
+        }
+        @keyframes neon-spin {
+            to { --neon-angle: 360deg; }
+        }
+        /* 横向封面 */
+        .card-cover-wrap.landscape { aspect-ratio: 16/9; }
+        .card-cover-img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .card-cover-placeholder {
+            width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: linear-gradient(135deg, var(--bg-placeholder-start), var(--bg-placeholder-end));
+            color: var(--text-secondary);
+        }
+        .card-cover-placeholder .icon { display: flex; justify-content: center; align-items: center; margin-bottom: 8px; opacity: 0.5; }
+        .card-cover-placeholder .icon i { width: 36px; height: 36px; }
+        .card-cover-placeholder .text { font-size: 13px; opacity: 0.7; }
+
+        /* 集数标签 */
+        .episode-badge {
+            position: absolute; bottom: 8px; right: 8px;
+            background: var(--badge-bg);
+            color: #fff; font-size: 11px;
+            padding: 2px 6px; border-radius: 3px;
+        }
+
+
+
+
+        /* 分辨率标识 */
+        .res-tag {
+            position: absolute; top: 6px; left: 6px;
+            color: #fff;
+            font-size: 10px; padding: 2px 5px; border-radius: 3px;
+            font-weight: 600;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .card-title {
+            font-size: 15px; font-weight: 500;
+            color: var(--text-primary); line-height: 1.5;
+            display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+        }
+        .card-meta { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+
+        /* 删除按钮 */
+        .card-delete-btn {
+            position: absolute; top: 6px; right: 6px;
+            width: 24px; height: 24px;
+            background: rgba(0,0,0,0.55); color: #fff;
+            border: none; border-radius: 50%;
+            font-size: 14px; line-height: 1;
+            cursor: pointer; opacity: 0;
+            transition: opacity 0.2s, background 0.2s, transform 0.15s;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 5;
+        }
+        .series-card:hover .card-delete-btn { opacity: 1; }
+        .card-delete-btn:hover { background: #e74c3c; transform: scale(1.15); }
+
+        /* 收藏按钮 */
+        .card-favorite-btn {
+            position: absolute; bottom: 6px; left: 6px;
+            width: 24px; height: 24px;
+            background: rgba(0,0,0,0.55); color: #fff;
+            border: none; border-radius: 50%;
+            font-size: 14px; line-height: 1;
+            cursor: pointer; opacity: 0;
+            transition: opacity 0.2s, background 0.2s, transform 0.15s;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 5;
+        }
+        .series-card:hover .card-favorite-btn { opacity: 1; }
+        .card-favorite-btn:hover { transform: scale(1.15); }
+        .card-favorite-btn i { width: 14px; height: 14px; }
+        .card-favorite-btn.favorited { opacity: 1; color: #FFD700; background: rgba(0,0,0,0.65); }
+        .card-favorite-btn.favorited:hover { background: rgba(255,215,0,0.3); }
+        .card-detail-btn {
+            position: absolute; top: 6px; right: 6px;
+            width: 24px; height: 24px;
+            background: rgba(0,0,0,0.55); color: #fff;
+            border: none; border-radius: 50%;
+            font-size: 14px; line-height: 1;
+            cursor: pointer; opacity: 0;
+            transition: opacity 0.2s, background 0.2s, transform 0.15s;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 5;
+        }
+        .series-card:hover .card-detail-btn { opacity: 1; }
+        .card-detail-btn:hover { transform: scale(1.15); background: rgba(251,114,153,0.85); }
+        .card-detail-btn i { width: 14px; height: 14px; }
+
+        /* 空状态 */
+        .empty-state { text-align: center; padding: 80px 20px; color: var(--text-secondary); }
+        .empty-state .icon { font-size: 56px; margin-bottom: 16px; opacity: 0.4; }
+        .empty-state .msg { font-size: 16px; }
+    </style>
+</head>
+<body>
+    <!-- 导航 -->
+    <nav class="top-nav">
+        <a class="logo" href="/">我的影院</a>
+        <form action="/search" method="GET" class="nav-search-form">
+            <div class="nav-search-wrap">
+                <input type="text" class="nav-search" name="keyword" id="navSearchInput" placeholder="全部 {{ series_list|length }} 个· {{ total_episodes }} 集" value="{{ request.query_params.get('keyword', '') }}" autocomplete="off">
+                <button type="submit" class="nav-search-btn"><i data-lucide="search"></i></button>
+                <div class="nav-search-suggestions" id="searchSuggestions"></div>
+            </div>
+        </form>
+        <div class="nav-right">
+            {% if not request.query_params.get('keyword') and categories %}
+            <div class="nav-cats" id="navCats">
+                {% for cat in categories %}
+                {% set cat_id = cat.id or 'default' %}
+                <span class="nav-cat-btn" data-cat="{{ cat_id }}" data-color="{{ cat.color }}" data-name="{{ cat.name }}"><span class="nav-cat-icon"><i data-lucide="{{ cat.icon or 'folder' }}"></i></span>{{ cat.name }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+            <div class="nav-sort-wrap">
+                <select class="nav-sort-select" id="sortSelect" onchange="window.location.href='/?sort=' + this.value + (new URLSearchParams(window.location.search).get('cat') ? '&cat=' + new URLSearchParams(window.location.search).get('cat') : '')">
+                    <option value="default" {% if current_sort == 'default' %}selected{% endif %}>默认排序</option>
+                    <option value="name" {% if current_sort == 'name' %}selected{% endif %}>名称 A-Z</option>
+                    <option value="name_desc" {% if current_sort == 'name_desc' %}selected{% endif %}>名称 Z-A</option>
+                    <option value="episodes" {% if current_sort == 'episodes' %}selected{% endif %}>集数 少→多</option>
+                    <option value="episodes_desc" {% if current_sort == 'episodes_desc' %}selected{% endif %}>集数 多→少</option>
+                    <option value="updated" {% if current_sort == 'updated' %}selected{% endif %}>最近更新</option>
+                </select>
+            </div>
+            <button class="nav-fav-btn" id="navFavBtn" title="我的收藏"><i data-lucide="heart"></i></button>
+            <a class="settings-btn" href="/settings" title="分类设置"><i data-lucide="settings"></i></a>
+        </div>
+    </nav>
+
+    <!-- 收藏面板 -->
+    <div class="fav-overlay" id="favOverlay" style="display:none;"></div>
+    <div class="fav-panel" id="favPanel">
+        <div class="fav-panel-header">
+            <span><i data-lucide="heart"></i> 我的收藏</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button class="fav-clear-btn" id="favClearBtn" title="清空所有收藏"><i data-lucide="trash-2"></i></button>
+                <button class="fav-panel-close" id="favPanelClose"><i data-lucide="x"></i></button>
+            </div>
+        </div>
+        <div class="fav-panel-list" id="favPanelList"></div>
+    </div>
+
+    <script id="seriesData" type="application/json">{{ series_list|tojson }}</script>
+
+    <!-- 主内容 -->
+    <main class="main-content">
+        {% if request.query_params.get('keyword') %}
+        <div class="page-header">
+            <div class="page-header-left">
+                <h1>搜索结果</h1>
+                <p>共找到 {{ series_list|length }} 个结果</p>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if series_list %}
+        <div id="allSections">
+            {% if not request.query_params.get('keyword') %}
+            <div id="catEmptyState" class="empty-state" style="display:none;">
+                <div class="icon"><i data-lucide="inbox"></i></div>
+                <div class="msg">该分类暂无视频，请在设置页面添加目录</div>
+            </div>
+            {% endif %}
+            {% if grouped and not request.query_params.get('keyword') %}
+                {# 按分类分组显示 #}
+                {% for cat_id, group in grouped.items() %}
+                <div class="category-section" data-category="{{ cat_id }}" data-cat-name="{{ group.category.name }}" data-cat-color="{{ group.category.color }}">
+                    <div class="section-title-bar">
+                        <span class="section-icon" onclick="rescanCategory('{{ cat_id }}', '{{ group.category.name|escape }}')" title="重新扫描该分类" style="cursor: pointer;"><i data-lucide="{{ group.category.icon or 'folder' }}"></i></span>
+                        <span class="section-name">{{ group.category.name }}</span>
+                        <span class="section-count">{{ group.series|length }} 个</span>
+                    </div>
+                    <div class="section-divider"></div>
+                    <div class="series-grid{% if group.series[0].orientation == 'landscape' %} landscape-grid{% endif %}" id="grid-{{ cat_id }}">
+                        {% for s in group.series %}
+                        <a class="series-card" href="/play/{{ s['path']|urlencode }}/1"
+                           data-orientation="{{ s.orientation }}">
+                            <div class="card-cover-wrap{% if s.orientation == 'landscape' %} landscape{% endif %}">
+                                {% if s.cover %}
+                                    <img class="card-cover-img" src="{{ s.cover }}" alt="{{ s.name }}" loading="lazy"
+                                         onerror="handleCoverError(this, false)">
+                                {% else %}
+                                    <div class="card-cover-placeholder">
+                                        <div class="icon"><i data-lucide="film"></i></div>
+                                        <div class="text">{{ s.name[:8] }}...</div>
+                                    </div>
+                                {% endif %}
+                                <span class="episode-badge">{{ s.episode_count }}集</span>
+                                {% if s.videos and s.videos[0].resolution %}<span class="res-tag">{{ s.videos[0].resolution }}</span>{% endif %}
+                                </span>
+                                <button class="card-favorite-btn" onclick="event.stopPropagation(); event.preventDefault(); toggleFavorite(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" title="收藏"><i data-lucide="heart"></i></button>
+                                <button class="card-detail-btn" onclick="event.stopPropagation(); event.preventDefault(); window.location.href=`/detail/{{ s['path']|urlencode }}`" title="详情"><i data-lucide="info"></i></button>
+                                <button class="card-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); deleteVideo(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" data-series="{{ 'true' if s.episode_count > 1 or s.get('episodes') else 'false' }}" title="从列表移除">×</button>
+                            </div>
+                            <div class="card-title">{{ s.name }}</div>
+                            <div class="card-meta">全{{ s.total_episodes }}集</div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+
+                {# 未分配到任何分类的剧集 #}
+                {% if unassigned_series %}
+                <div class="category-section" data-category="_unassigned_">
+                    <div class="section-title-bar">
+                        <span class="section-icon"><i data-lucide="folder-open"></i></span>
+                        <span class="section-name">未分类</span>
+                        <span class="section-count">{{ unassigned_series|length }} 个</span>
+                    </div>
+                    <div class="section-divider" style="background:#999"></div>
+                    <div class="series-grid">
+                        {% for s in unassigned_series %}
+                        <a class="series-card" href="/play/{{ s['path']|urlencode }}/1"
+                           data-orientation="{{ s.orientation }}">
+                            <div class="card-cover-wrap{% if s.orientation == 'landscape' %} landscape{% endif %}">
+                                {% if s.cover %}
+                                    <img class="card-cover-img" src="{{ s.cover }}" alt="{{ s.name }}" loading="lazy"
+                                         onerror="handleCoverError(this, false)">
+                                {% else %}
+                                    <div class="card-cover-placeholder">
+                                        <div class="icon"><i data-lucide="film"></i></div>
+                                        <div class="text">{{ s.name[:8] }}...</div>
+                                    </div>
+                                {% endif %}
+                                <span class="episode-badge">{{ s.episode_count }}集</span>
+                                {% if s.videos and s.videos[0].resolution %}<span class="res-tag">{{ s.videos[0].resolution }}</span>{% endif %}
+                                </span>
+                                <button class="card-favorite-btn" onclick="event.stopPropagation(); event.preventDefault(); toggleFavorite(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" title="收藏"><i data-lucide="heart"></i></button>
+                                <button class="card-detail-btn" onclick="event.stopPropagation(); event.preventDefault(); window.location.href=`/detail/{{ s['path']|urlencode }}`" title="详情"><i data-lucide="info"></i></button>
+                                <button class="card-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); deleteVideo(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" data-series="{{ 'true' if s.episode_count > 1 or s.get('episodes') else 'false' }}" title="从列表移除">×</button>
+                            </div>
+                            <div class="card-title">{{ s.name }}</div>
+                            <div class="card-meta">全{{ s.total_episodes }}集</div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            {% else %}
+                {# 搜索结果或无分组时平铺显示 #}
+                <div class="series-grid">
+                    {% for s in series_list %}
+                    <a class="series-card" href="/play/{{ s['path']|urlencode }}/1"
+                       data-orientation="{{ s.orientation }}">
+                        <div class="card-cover-wrap{% if s.orientation == 'landscape' %} landscape{% endif %}">
+                            {% if s.cover %}
+                                <img class="card-cover-img" src="{{ s.cover }}" alt="{{ s.name }}" loading="lazy"
+                                     onerror="handleCoverError(this, false)">
+                            {% else %}
+                                <div class="card-cover-placeholder">
+                                    <div class="icon"><i data-lucide="film"></i></div>
+                                    <div class="text">{{ s.name[:8] }}...</div>
+                                </div>
+                            {% endif %}
+                            <span class="episode-badge">{{ s.episode_count }}集</span>
+                            {% if s.videos and s.videos[0].resolution %}<span class="res-tag">{{ s.videos[0].resolution }}</span>{% endif %}
+                            </span>
+                            <button class="card-favorite-btn" onclick="event.stopPropagation(); event.preventDefault(); toggleFavorite(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" title="收藏"><i data-lucide="heart"></i></button>
+                            <button class="card-detail-btn" onclick="event.stopPropagation(); event.preventDefault(); window.location.href=`/detail/{{ s['path']|urlencode }}`" title="详情"><i data-lucide="info"></i></button>
+                            <button class="card-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); deleteVideo(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" data-series="{{ 'true' if s.episode_count > 1 or s.get('episodes') else 'false' }}" title="从列表移除">×</button>
+                        </div>
+                        <div class="card-title">{{ s.name }}</div>
+                        <div class="card-meta">全{{ s.total_episodes }}集</div>
+                    </a>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon"><i data-lucide="inbox"></i></div>
+            <div class="msg">暂无视频数据</div>
+        </div>
+        {% endif %}
+    </main>
+
+    <script>
+        // 回车搜索
+        document.querySelector('.nav-search').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const kw = e.target.value.trim();
+                if (!kw) {
+                    window.location.href = '/';
+                    e.preventDefault();
+                } else {
+                    e.target.form.submit();
+                }
+            }
+        });
+
+        // ========== 实时搜索建议 ==========
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+        const seriesDataEl = document.getElementById('seriesData');
+        const allSeriesNames = JSON.parse(seriesDataEl.textContent || '[]').map(s => ({ name: s.name, path: s.path }));
+        const searchInput = document.getElementById('navSearchInput');
+        const searchSuggestions = document.getElementById('searchSuggestions');
+        let searchTimeout = null;
+
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const kw = this.value.trim().toLowerCase();
+            if (!kw) {
+                searchSuggestions.classList.remove('show');
+                return;
+            }
+            searchTimeout = setTimeout(() => {
+                const matches = allSeriesNames.filter(s => s.name.toLowerCase().includes(kw)).slice(0, 8);
+                if (matches.length > 0) {
+                    // 转义用户输入中的正则特殊字符，防止正则注入
+                    const kwSafe = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    searchSuggestions.innerHTML = matches.map(m => {
+                        const highlighted = escapeHtml(m.name).replace(new RegExp(`(${kwSafe})`, 'gi'), '<span class="highlight">$1</span>');
+                        return `<div class="suggestion-item" data-path="${encodeURIComponent(m.path)}">${highlighted}</div>`;
+                    }).join('');
+                    searchSuggestions.classList.add('show');
+                    searchSuggestions.querySelectorAll('.suggestion-item').forEach(item => {
+                        item.addEventListener('click', () => {
+                            window.location.href = '/play/' + item.dataset.path + '/1';
+                        });
+                    });
+                } else {
+                    searchSuggestions.classList.remove('show');
+                }
+            }, 150);
+        });
+
+        searchInput.addEventListener('blur', () => {
+            setTimeout(() => searchSuggestions.classList.remove('show'), 200);
+        });
+        searchInput.addEventListener('focus', () => {
+            if (searchInput.value.trim()) searchSuggestions.classList.add('show');
+        });
+
+        // ========== 分类筛选 ==========
+        </script>
+        <script id="searchModeData" type="application/json">{% if request.query_params.get('keyword') is not none %}true{% else %}false{% endif %}</script>
+        <script>
+        (function() {
+            const tabs = document.querySelectorAll('.cat-tab, .nav-cat-btn');
+            const sections = document.querySelectorAll('.category-section[data-category]');
+            const searchModeEl = document.getElementById('searchModeData');
+            const isSearchMode = searchModeEl ? JSON.parse(searchModeEl.textContent) : false;
+
+            // 初始化分类颜色
+            tabs.forEach(tab => {
+                const color = tab.dataset.color;
+                if (color) {
+                    tab.style.setProperty('--tab-color', color);
+                }
+            });
+
+            // 初始化分区标题颜色
+            sections.forEach(sec => {
+                const color = sec.dataset.catColor || '#fb7299';
+                const divider = sec.querySelector('.section-divider');
+                if (divider) {
+                    divider.style.background = color;
+                }
+            });
+
+            // 分类筛选逻辑
+            let currentCat = null;
+
+            // 筛选函数
+            function applyCatFilter(targetCat) {
+                // 无效值时显示全部
+                if (!targetCat) {
+                    currentCat = null;
+                    tabs.forEach(t => { t.classList.remove('active'); t.style.background = ''; t.style.color = ''; });
+                    sections.forEach(sec => { sec.style.display = ''; });
+                    const emptyState = document.getElementById('catEmptyState');
+                    if (emptyState) emptyState.style.display = 'none';
+                    const searchInput = document.getElementById('navSearchInput');
+                    if (searchInput) searchInput.placeholder = '全部 {{ series_list|length }} 个· {{ total_episodes }} 集';
+                    return;
+                }
+                const emptyState = document.getElementById('catEmptyState');
+                let hasVisibleSection = false;
+                currentCat = targetCat;
+                tabs.forEach(t => {
+                    if (t.dataset.cat === targetCat) {
+                        t.classList.add('active');
+                        t.style.background = 'var(--brand-color)';
+                        t.style.color = '#fff';
+                    } else {
+                        t.classList.remove('active');
+                        t.style.background = '';
+                        t.style.color = '';
+                    }
+                });
+                sections.forEach(sec => {
+                    if (!currentCat) {
+                        sec.style.display = '';
+                        hasVisibleSection = true;
+                    } else if (sec.dataset.category === currentCat) {
+                        sec.style.display = '';
+                        hasVisibleSection = true;
+                    } else {
+                        sec.style.display = 'none';
+                    }
+                });
+                if (emptyState) {
+                    emptyState.style.display = hasVisibleSection ? 'none' : '';
+                }
+                const searchInput = document.getElementById('navSearchInput');
+                if (searchInput) {
+                    if (!currentCat) {
+                        searchInput.placeholder = '全部 {{ series_list|length }} 个· {{ total_episodes }} 集';
+                    } else {
+                        let visibleCount = 0;
+                        sections.forEach(sec => {
+                            if (sec.style.display !== 'none') {
+                                visibleCount += sec.querySelectorAll('.series-card').length;
+                            }
+                        });
+                        const activeTab = document.querySelector(`.nav-cat-btn[data-cat="${currentCat}"]`);
+                        const catName = activeTab ? activeTab.dataset.name || activeTab.textContent.trim() : '';
+                        searchInput.placeholder = catName + ' ' + visibleCount + ' 个';
+                    }
+                }
+            }
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const targetCat = this.dataset.cat;
+                    if (isSearchMode) {
+                        window.location.href = '/?cat=' + targetCat;
+                        return;
+                    }
+                    // 切换选中状态：已选中则取消，显示全部
+                    if (currentCat === targetCat) {
+                        applyCatFilter(null);
+                        history.replaceState(null, '', '/');
+                    } else {
+                        applyCatFilter(targetCat);
+                        history.replaceState(null, '', '/?cat=' + encodeURIComponent(targetCat));
+                    }
+                });
+            });
+
+            // 页面加载时，如果有 ?cat= 参数，应用分类筛选
+            var urlCat = new URLSearchParams(window.location.search).get('cat');
+            if (urlCat) {
+                applyCatFilter(urlCat);
+            }
+            
+            // 恢复滚动位置（从播放页面返回时）- 必须在分类筛选之后执行
+            (function restoreScrollPosition() {
+                // 构建可能的滚动位置 key
+                var scrollKeys = ['mycinema_scroll_merged'];
+                if (urlCat) {
+                    scrollKeys.push('mycinema_scroll_cat_' + urlCat);
+                }
+                // 尝试恢复滚动位置
+                for (var i = 0; i < scrollKeys.length; i++) {
+                    var scrollKey = scrollKeys[i];
+                    var scrollY = localStorage.getItem(scrollKey);
+                    if (scrollY) {
+                        localStorage.removeItem(scrollKey);
+                        // 延迟执行确保 DOM 已渲染且分类筛选已完成
+                        setTimeout(() => {
+                            window.scrollTo(0, parseInt(scrollY, 10));
+                        }, 150);
+                        break;
+                    }
+                }
+            })();
+            
+            // 拦截视频卡片点击：在进入播放页面之前保存当前分类页面的滚动位置
+            document.addEventListener('click', function(e) {
+                var card = e.target.closest('.series-card');
+                if (card && card.href) {
+                    // 重新获取 urlCat，确保是最新的
+                    var currentUrlCat = new URLSearchParams(window.location.search).get('cat');
+                    // 保存当前分类页面的滚动位置
+                    var scrollKey = 'mycinema_scroll_cat_' + currentUrlCat;
+                    if (!currentUrlCat) {
+                        scrollKey = 'mycinema_scroll_merged';
+                    }
+                    var scrollY = window.scrollY || document.documentElement.scrollTop;
+                    localStorage.setItem(scrollKey, scrollY);
+                }
+            }, true);  // 使用捕获阶段，在默认行为之前拦截
+        })();
+
+        // ========== 重新扫描分类 ==========
+        async function rescanCategory(catId, catName) {
+            if (!confirm('确定要扫描「' + catName + '」分类吗？\n\n将检测并更新有变化的目录，保留原有数据。')) {
+                return;
+            }
+            try {
+                const autoResp = await fetch('/api/auto-scan');
+                const autoData = await autoResp.json();
+                if (autoData.enabled) {
+                    alert('自动扫描已开启，无法手动扫描');
+                    return;
+                }
+                const resp = await fetch('/api/category/rescan', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({category_id: catId})
+                });
+                const result = await resp.json();
+                if (result.ok) {
+                    location.reload();
+                } else {
+                    alert('扫描失败: ' + (result.error || '未知错误'));
+                }
+            } catch(e) {
+                alert('扫描失败: ' + e.message);
+            }
+        }
+
+        // ========== 删除视频 ==========
+        async function deleteVideo(btn) {
+            var path = btn.dataset.path;
+            var name = btn.dataset.name || '该视频';
+            var isSeries = btn.dataset.series === 'true';
+            var tip = isSeries ? '将从首页列表中移除该系列' : '将从首页列表中移除该视频';
+            if (!confirm('确定要删除「' + name + '」吗？\n\n' + tip + '，不会删除任何文件。')) {
+                return;
+            }
+            btn.textContent = '...';
+            btn.disabled = true;
+            try {
+                const resp = await fetch('/api/video/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({path: path, is_series: isSeries})
+                });
+                const result = await resp.json();
+                if (result.ok) {
+                    var card = btn.closest('.series-card');
+                    if (card) card.style.opacity = '0.3';
+                    btn.innerHTML = '<i data-lucide="check"></i>';
+                    setTimeout(() => {
+                        var cat = new URLSearchParams(window.location.search).get('cat');
+                        location.href = cat ? '/?cat=' + encodeURIComponent(cat) : '/';
+                    }, 800);
+                } else {
+                    alert('移除失败: ' + (result.error || '未知错误'));
+                    btn.innerHTML = '<i data-lucide="x"></i>';
+                    initIcons();
+                }
+            } catch(e) {
+                alert('移除失败: ' + e.message);
+                btn.textContent = '×';
+                btn.disabled = false;
+            }
+        }
+
+        // ========== 收藏功能 ==========
+        const FAVORITES_KEY = 'mycinema_favorites';
+        function getFavorites() {
+            try {
+                return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '{}');
+            } catch (e) { return {}; }
+        }
+        function saveFavorites(favs) {
+            localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+        }
+        function toggleFavorite(btn) {
+            const path = btn.dataset.path;
+            const favs = getFavorites();
+            if (favs[path]) {
+                delete favs[path];
+                btn.innerHTML = '<i data-lucide="heart"></i>';
+                btn.classList.remove('favorited');
+            } else {
+                favs[path] = { name: btn.dataset.name, time: Date.now() };
+                btn.innerHTML = '<i data-lucide="heart"></i>';
+                btn.classList.add('favorited');
+            }
+            saveFavorites(favs);
+            initIcons();
+        }
+        function initFavoriteButtons() {
+            const favs = getFavorites();
+            document.querySelectorAll('.card-favorite-btn').forEach(btn => {
+                if (favs[btn.dataset.path]) {
+                    btn.innerHTML = '<i data-lucide="heart"></i>';
+                    btn.classList.add('favorited');
+                }
+            });
+            initIcons();
+            updateFavNavButton();
+        }
+
+        // 收藏面板
+        const favPanel = document.getElementById('favPanel');
+        const favOverlay = document.getElementById('favOverlay');
+        const favPanelList = document.getElementById('favPanelList');
+        const favPanelClose = document.getElementById('favPanelClose');
+        const navFavBtn = document.getElementById('navFavBtn');
+        const allSeries = JSON.parse(seriesDataEl.textContent || '[]');
+
+        function updateFavNavButton() {
+            const favs = getFavorites();
+            const count = Object.keys(favs).length;
+            navFavBtn.classList.toggle('active', count > 0);
+        }
+
+        function renderFavPanel() {
+            const favs = getFavorites();
+            const favPaths = Object.keys(favs);
+            if (favPaths.length === 0) {
+                favPanelList.innerHTML = '<div class="fav-empty">暂无收藏内容<br>点击卡片上的 <i data-lucide="heart"></i> 即可收藏</div>';
+                initIcons();
+                return;
+            }
+            favPanelList.innerHTML = favPaths.map(path => {
+                const info = favs[path];
+                const decodedPath = decodeURIComponent(path);
+                const series = allSeries.find(s => s.path === decodedPath || s.path === path);
+                const episodes = series ? (series.total_episodes || series.episode_count || '?') : '?';
+                const cover = series && series.cover ? series.cover : '';
+                const orientation = series && series.orientation ? series.orientation : 'landscape';
+                const timeStr = info.time ? new Date(info.time).toLocaleDateString() : '';
+                const thumbHtml = cover
+                    ? `<img class="fav-item-thumb ${orientation}" src="${cover}" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span class="fav-item-icon" style="display:none;"><i data-lucide="tv"></i></span>`
+                    : `<span class="fav-item-icon"><i data-lucide="tv"></i></span>`;
+                return `<div class="fav-item" data-path="${path}">
+                    ${thumbHtml}
+                    <div class="fav-item-info">
+                        <div class="fav-item-name">${info.name}</div>
+                        <div class="fav-item-meta">${episodes}集 · 收藏于${timeStr}</div>
+                    </div>
+                    <button class="fav-item-del" data-path="${path}" title="取消收藏"><i data-lucide="x"></i></button>
+                </div>`;
+            }).join('');
+            initIcons();
+            favPanelList.querySelectorAll('.fav-item').forEach(item => {
+                item.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('fav-item-del')) {
+                        e.stopPropagation();
+                        const path = e.target.dataset.path;
+                        const favs = getFavorites();
+                        delete favs[path];
+                        saveFavorites(favs);
+                        const btn = document.querySelector(`.card-favorite-btn[data-path="${CSS.escape(path)}"]`);
+                        if (btn) {
+                            btn.innerHTML = '<i data-lucide="heart"></i>';
+                            btn.classList.remove('favorited');
+                            initIcons();
+                        }
+                        updateFavNavButton();
+                        renderFavPanel();
+                        return;
+                    }
+                    window.location.href = '/play/' + encodeURIComponent(item.dataset.path) + '/1';
+                });
+            });
+        }
+
+        function toggleFavPanel() {
+            const isOpen = favPanel.classList.contains('show');
+            if (isOpen) {
+                favPanel.classList.remove('show');
+                favOverlay.style.display = 'none';
+            } else {
+                renderFavPanel();
+                favPanel.classList.add('show');
+                favOverlay.style.display = 'block';
+            }
+        }
+
+        navFavBtn.addEventListener('click', toggleFavPanel);
+        favPanelClose.addEventListener('click', toggleFavPanel);
+        favOverlay.addEventListener('click', toggleFavPanel);
+
+        document.getElementById('favClearBtn').addEventListener('click', () => {
+            if (!confirm('确定清空所有收藏？')) return;
+            const favs = {};
+            saveFavorites(favs);
+            document.querySelectorAll('.card-favorite-btn').forEach(btn => {
+                btn.innerHTML = '<i data-lucide="heart"></i>';
+                btn.classList.remove('favorited');
+            });
+            initIcons();
+            updateFavNavButton();
+            renderFavPanel();
+        });
+
+        initFavoriteButtons();
+        initIcons();
+    </script>
+</body>
+</html>

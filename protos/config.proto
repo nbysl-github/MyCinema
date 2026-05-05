@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package mycinema;
+
+option go_package = "github.com/mycinema/protos;mycinema";
+
+import "categories.proto";
+
+// ===== 用户配置 (config.json) =====
+
+message Config {
+  bool auto_scan_enabled = 2;              // 自动扫描开关
+  bool delete_original_after_transcode = 3; // 转码后删除原文件
+  int32 idle_check_interval = 4;           // 空闲检测间隔（秒）
+  int32 watcher_interval = 5;              // 文件监视间隔（秒）
+  int32 cache_ttl = 6;                     // 缓存 TTL（秒）
+  int32 meta_workers = 7;                  // 元数据采集线程数
+  int32 detail_workers = 8;                // 详情页线程数
+  int32 meta_cache_max = 9;                // 元数据缓存上限
+  bool gpu_transcode = 10;                 // GPU 硬件转码开关
+  int32 server_port = 11;                  // 服务器端口
+  string server_host = 12;                 // 服务器绑定地址
+  bool prefetch_enabled = 13;              // 视频预加载开关
+  int32 cdn_cache_max_age = 14;            // CDN 缓存最大时间（秒）
+  int32 l1_cache_max_size_mb = 15;         // L1 内存缓存上限（MB）
+  int32 l1_cache_ttl = 16;                 // L1 缓存 TTL（秒）
+
+  bool auto_transcode = 19;               // 自动转码为 MP4 开关（默认开启）
+
+  // 可选：默认分类配置
+  Category default_category = 17;
+  string uncategorized_label = 18;         // 未分类标签
+}

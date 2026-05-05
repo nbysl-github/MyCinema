@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package mycinema;
+
+option go_package = "github.com/mycinema/protos;mycinema";
+
+import "categories.proto";
+
+// ===== 导出备份信息 (backup_latest/export_info.json) =====
+
+message ExportInfo {
+  repeated Category categories = 1;      // 导出时的分类配置快照
+  bool auto_scan_enabled = 2;            // 导出时的自动扫描状态
+  string export_time = 3;                // 导出时间戳（如 "20260426_220921"）
+}

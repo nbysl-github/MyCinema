@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分类设置 - 我的影院</title>
+    <script src="/static/icons.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-body: #f1f2f3;
+            --bg-nav: #ffffff;
+            --bg-card: #e8eaed;
+            --bg-card-hover: #dcdfe3;
+            --text-primary: #18191c;
+            --text-secondary: #61666d;
+            --border-color: #e3e5e7;
+            --shadow: 0 4px 16px rgba(0,0,0,0.10);
+            --nav-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --brand-color: #fb7299;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-body: {{ bili_colors.bg_deep }};
+                --bg-nav: {{ bili_colors.bg_normal }};
+                --bg-card: {{ bili_colors.bg_card }};
+                --bg-card-hover: rgba(255,255,255,0.06);
+                --text-primary: #fff;
+                --text-secondary: {{ bili_colors.text_secondary }};
+                --border-color: {{ bili_colors.divider }};
+                --shadow: 0 4px 16px rgba(0,0,0,0.35);
+                --nav-shadow: 0 2px 8px rgba(0,0,0,0.25);
+                --brand-color: {{ bili_colors.brand_pink }};
+            }
+        }
+        body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background-color: var(--bg-body); color: var(--text-primary); min-height: 100vh; }
+
+        .top-nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            height: 56px; background-color: var(--bg-nav);
+            display: flex; align-items: center; padding: 0 24px;
+            box-shadow: var(--nav-shadow);
+        }
+        .nav-center { display: flex; align-items: center; flex: 1; justify-content: center; }
+        .logo { font-size: 20px; font-weight: 700; color: var(--brand-color); text-decoration: none; }
+        .nav-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+        .nav-right { display: flex; align-items: center; gap: 8px; }
+        .back-btn {
+            background: var(--bg-card); color: var(--text-primary);
+            border: none; padding: 6px 16px; border-radius: 4px;
+            font-size: 13px; cursor: pointer; text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .back-btn i { width: 16px; height: 16px; }
+        .back-btn:hover { background: var(--brand-color); color: #fff; }
+
+        .main-content { margin-top: 76px; padding: 24px; max-width: 1000px; margin-left: auto; margin-right: auto; }
+
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-title { font-size: 22px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .btn {
+            border: none; padding: 8px 18px; border-radius: 6px;
+            font-size: 14px; cursor: pointer; font-weight: 500; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn i { width: 16px; height: 16px; }
+        .btn-primary { background: var(--brand-color); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-primary:disabled { background: #9aa0a6; color: #fff; cursor: not-allowed; opacity: 0.7; filter: none; }
+        .btn-success { background: #00B18E; color: #fff; }
+        .btn-success:hover { filter: brightness(1.1); }
+        .btn-danger { background: #F45A9D; color: #fff; }
+        .btn-danger:hover { filter: brightness(1.1); }
+        .btn-secondary { background: var(--bg-card); color: var(--text-primary); }
+        .btn-secondary:hover { filter: brightness(0.95); }
+        .btn-secondary:disabled { 
+            background: #3C3C3E; 
+            color: #6B6B6B; 
+            cursor: not-allowed; 
+            opacity: 0.6; 
+        }
+
+        .settings-card { background: var(--bg-nav); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); margin-bottom: 20px; }
+        .settings-card .card-header {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px 20px; border-bottom: 1px solid var(--border-color);
+        }
+        .settings-card .card-header h2 { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin: 0; transition: color 0.2s ease; }
+        .settings-card .card-header h2 i { width: 20px; height: 20px; }
+        .settings-card .card-header:hover h2 { color: var(--brand-color); }
+        .server-status-bar > span { cursor: default; transition: color 0.2s ease; }
+        .server-status-bar > span:hover { color: var(--brand-color); }
+        .server-status-bar > span:hover svg { color: var(--brand-color) !important; }
+        .settings-card .card-body { padding: 16px 20px; }
+        .setting-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+        .setting-info { flex: 1; }
+        .setting-label { font-size: 14px; font-weight: 500; display: block; }
+        .setting-desc { font-size: 12px; color: var(--text-secondary); margin-top: 4px; display: block; }
+        .toggle-switch {
+            position: relative; width: 48px; height: 26px; flex-shrink: 0;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background: var(--border-color); border-radius: 13px; transition: 0.3s;
+        }
+        .toggle-slider::before {
+            position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px;
+            background: white; border-radius: 50%; transition: 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: var(--brand-color); }
+        .toggle-switch input:checked + .toggle-slider::before { transform: translateX(22px); }
+
+        .category-section { background: var(--bg-nav); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); margin-bottom: 20px; transition: opacity 0.2s, box-shadow 0.2s; cursor: grab; }
+        .category-section:active { cursor: grabbing; }
+        .category-section.drag-over { opacity: 0.6; box-shadow: 0 8px 32px rgba(251,114,153,0.4); border: 2px dashed var(--brand-color); }
+        .drag-handle { cursor: grab; color: var(--text-secondary); display: flex; align-items: center; padding: 0 4px; }
+        .drag-handle:active { cursor: grabbing; }
+        .drag-handle i { width: 18px; height: 18px; }
+        .section-header {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px 20px; border-bottom: 1px solid var(--border-color);
+        }
+        .cat-icon { display: flex; align-items: center; margin-right: 8px; }
+        .cat-icon i { width: 26px; height: 26px; }
+        .cat-info { flex: 1; display: flex; align-items: center; }
+        .cat-name { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+        .cat-count { font-size: 12px; color: var(--text-secondary); }
+        .cat-actions { display: flex; gap: 8px; align-items: center; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+        .btn i { width: 14px; height: 14px; }
+        .page-title { display: flex; align-items: center; gap: 8px; }
+        .page-title i { width: 28px; height: 28px; }
+        .section-body { padding: 16px 20px; min-height: 80px; }
+
+        .dir-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+        .dir-tag {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--bg-card); padding: 10px 14px; border-radius: 8px;
+            font-size: 13px; transition: all 0.15s;
+        }
+        .dir-tag:hover { background: var(--bg-card-hover); }
+        .dir-tag.dir-missing { border: 1px solid #F45A9D; background: rgba(244,90,157,0.08); }
+        .dir-tag.dir-missing .icon { color: #F45A9D; }
+        .dir-tag.dir-missing .name { color: #F45A9D; text-decoration: line-through; opacity: 0.7; }
+        .dir-tag .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .dir-tag .del {
+            background: none; border: none; color: var(--text-secondary);
+            cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px;
+        }
+        .dir-tag .del:hover { color: #F45A9D; }
+        .dir-type-badge {
+            font-size: 11px; padding: 1px 6px; border-radius: 4px;
+            flex-shrink: 0; font-weight: 500; line-height: 1.4;
+        }
+        .dir-type-合集 { background: rgba(251,114,153,0.15); color: #FB7299; }
+        .dir-type-混合 { background: rgba(0,174,236,0.15); color: #00AEEC; }
+        .dir-type-扁平 { background: rgba(100,181,246,0.15); color: #64B5F6; }
+        .dir-type-空 { background: rgba(153,153,153,0.15); color: #999; }
+        .empty-state { color: var(--text-secondary); font-size: 14px; text-align: center; padding: 20px; }
+
+        .add-dir-area { padding: 14px 20px; border-top: 1px solid var(--border-color); }
+        .add-dir-area button { width: 100%; }
+
+        .toast {
+            position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-20px);
+            background: #333; color: #fff; padding: 10px 24px; border-radius: 8px;
+            font-size: 14px; z-index: 9999; opacity: 0; transition: all 0.3s;
+            pointer-events: none;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .toast svg { width: 18px; height: 18px; flex-shrink: 0; }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        .dialog-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6); z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .dialog {
+            background: var(--bg-nav); border-radius: 12px;
+            width: 90%; max-width: 480px; max-height: 70vh;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            display: flex; flex-direction: column;
+            animation: slideUp 0.25s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .dialog-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; border-bottom: 1px solid var(--border-color);
+            font-size: 15px; font-weight: 600;
+        }
+        .dialog-close {
+            background: none; border: none; font-size: 24px;
+            color: var(--text-secondary); cursor: pointer; line-height: 1;
+        }
+        .dialog-close:hover { color: var(--text-primary); }
+        .dialog-body { flex: 1; overflow-y: auto; padding: 12px 16px; }
+        .dialog-footer { padding: 12px 20px; border-top: 1px solid var(--border-color); display: flex; gap: 10px; justify-content: flex-end; }
+
+        .dialog-list { display: flex; flex-direction: column; gap: 8px; }
+        .dialog-item {
+            padding: 12px 16px; border-radius: 8px; cursor: pointer;
+            font-size: 14px; background: var(--bg-card); transition: all 0.15s;
+        }
+        .dialog-item:hover { background: var(--brand-color); color: #fff; }
+        .dialog-item .icon { margin-right: 8px; }
+
+        .new-cat-dialog .dialog-body { padding: 20px; }
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+        .form-group input {
+            width: 100%; height: 40px; background: var(--bg-card);
+            border: 1px solid var(--border-color); border-radius: 6px;
+            padding: 0 12px; font-size: 14px; color: var(--text-primary); outline: none;
+        }
+        .form-group input:focus { border-color: var(--brand-color); }
+        .form-group input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+        .form-group input[type="number"]::-webkit-outer-spin-button,
+        .form-group input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+        .advanced-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-group .unit { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .advanced-grid input[readonly] { background: var(--bg-secondary, rgba(128,128,128,0.08)); color: var(--text-secondary); cursor: default; opacity: 0.7; }
+        .advanced-grid input:not([readonly]) { background: var(--bg-card, #fff); color: var(--text-primary); cursor: text; opacity: 1; }
+        .collapsible-card .card-header { justify-content: space-between; user-select: none; }
+        .collapsible-card .card-header [data-lucide="chevron-down"],
+        .collapsible-card .card-header svg[id$="Arrow"] { transition: transform 0.25s ease; width: 20px; height: 20px; flex-shrink: 0; }
+        .collapsible-card .card-header .arrow-up { transform: rotate(-90deg); }
+        .collapsible-card .card-header .arrow-down { transform: rotate(0deg); }
+        @media (max-width: 600px) { .advanced-grid { grid-template-columns: 1fr; } }
+        .tc-progress-bar { width:100%;height:4px;background:var(--border-color);border-radius:2px;margin-top:4px;overflow:hidden; }
+        .tc-progress-fill { height:100%;background:var(--brand-color);border-radius:2px;transition:width 0.5s ease; }
+        .tc-pct { font-size:11px;color:var(--brand-color);font-weight:600;min-width:36px;text-align:right; }
+        .color-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+        .color-option {
+            width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+            border: 3px solid transparent; transition: all 0.15s;
+        }
+        .color-option:hover, .color-option.selected { border-color: var(--text-primary); }
+        .icon-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+        .icon-option {
+            width: 40px; height: 40px; border-radius: 8px; cursor: pointer;
+            background: var(--bg-card); display: flex; align-items: center; justify-content: center;
+            border: 2px solid transparent; transition: all 0.15s;
+        }
+        .icon-option i { width: 22px; height: 22px; }
+        .icon-option:hover, .icon-option.selected { border-color: var(--brand-color); }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); z-index: 20000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #fff; font-size: 16px;
+        }
+        .loading-spinner { font-size: 48px; animation: spin 1s linear infinite; margin-bottom: 16px; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .browser-item {
+            display:flex;align-items:center;padding:10px 14px;border-radius:8px;
+            cursor:pointer;font-size:14px;transition:all 0.15s;gap:8px;
+        }
+        .browser-item:hover { background:var(--bg-card-hover); }
+        .quick-add-btn { font-size:12px;background:var(--bg-card-hover);border:none; }
+        .quick-add-btn:hover { background:var(--brand-color);color:#fff; }
+    </style>
+</head>
+<body>
+<nav class="top-nav">
+    <a class="logo" href="/">我的影院</a>
+    <div class="nav-center">
+        <span class="nav-title">设置</span>
+    </div>
+    <div class="nav-right">
+        <a class="back-btn" href="/"><i data-lucide="home"></i> 返回首页</a>
+    </div>
+</nav>
+
+<main class="main-content">
+    <!-- 服务器状态栏 -->
+    <div id="serverStatusBar" class="server-status-bar" style="background:var(--bg-nav);border-radius:10px;box-shadow:var(--shadow);margin-bottom:20px;padding:14px 20px;display:grid;grid-template-columns:repeat(5,1fr);gap:12px;font-size:13px;color:var(--text-secondary);">
+        <span style="display:inline-flex;align-items:center;gap:4px;"><i data-lucide="loader" style="width:14px!important;height:14px!important;color:var(--brand-color);"></i> 加载中...</span>
+    </div>
+
+    <div class="settings-card collapsible-card">
+        <div class="card-header" style="cursor:pointer;" onclick="toggleCategories()" title="点击展开/收起">
+            <h2><i data-lucide="folder-cog"></i> 分类管理</h2>
+            <i data-lucide="chevron-down" id="categoriesArrow" class="arrow-up"></i>
+        </div>
+        <div class="card-body" id="categoriesBody" style="display:none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+                <span style="font-size:14px;color:var(--text-secondary);">管理视频分类和目录</span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" id="manualScanBtn" onclick="manualSave()"><i data-lucide="rotate-cw"></i> 重新扫描</button>
+                    <button class="btn btn-primary" id="exportBtn" onclick="exportCategories()"><i data-lucide="download"></i> 导出</button>
+                    <button class="btn btn-primary" id="importBtn" onclick="importCategories()"><i data-lucide="upload"></i> 导入</button>
+                    <button class="btn btn-primary" onclick="clearCategories()"><i data-lucide="trash-2"></i> 清空</button>
+                    <button class="btn btn-primary" onclick="openNewCatDialog()"><i data-lucide="plus"></i> 新建分类</button>
+                </div>
+            </div>
+            <div id="categoriesList"></div>
+        </div>
+    </div>
+
+    <div class="settings-card collapsible-card">
+        <div class="card-header" style="cursor:pointer;" onclick="toggleAdvanced()" title="点击展开/收起">
+            <h2><i data-lucide="sliders-horizontal"></i> 高级设置</h2>
+            <i data-lucide="chevron-down" id="advancedArrow" class="arrow-up"></i>
+        </div>
+        <div class="card-body" id="advancedBody" style="display:none;">
+            <div class="setting-row" style="margin-bottom:16px;">
+                <div class="setting-info">
+                    <span class="setting-label">自动扫描</span>
+                    <span class="setting-desc">关闭后可暂停目录扫描、缩略图生成和转码，节省系统资源</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="autoScanToggle" checked>
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-row" style="margin-bottom:16px;">
+                <div class="setting-info">
+                    <span class="setting-label">自动转码为 MP4</span>
+                    <span class="setting-desc">开启后，扫描到非 MP4 视频时自动加入转码队列</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="cfgAutoTranscode">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-row" style="margin-bottom:16px;">
+                <div class="setting-info">
+                    <span class="setting-label">转码后删除原文件</span>
+                    <span class="setting-desc">开启后，FFmpeg 转码完成后自动删除原始非 MP4 文件</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="cfgDeleteOriginal">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="setting-row" style="margin-bottom:16px;" id="gpuTranscodeRow">
+                <div class="setting-info">
+                    <span class="setting-label">GPU 硬件转码（NVENC）</span>
+                    <span class="setting-desc" id="gpuDesc">使用 NVIDIA 独显加速转码，速度提升 5~10 倍，CPU 占用极低</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="cfgGpuTranscode">
+                    <span class="toggle-slider"></span>
+                </label>
+            </div>
+            <div class="advanced-grid" id="advancedGrid">
+                <div class="form-group">
+                    <label>空闲检测间隔</label>
+                    <input type="number" id="cfgIdleCheck" min="10" max="3600" step="10" readonly>
+                    <div class="unit">秒（10~3600，默认300）</div>
+                </div>
+                <div class="form-group">
+                    <label>文件监控间隔</label>
+                    <input type="number" id="cfgWatcher" min="1" max="60" step="1" readonly>
+                    <div class="unit">秒（1~60，默认5）</div>
+                </div>
+                <div class="form-group">
+                    <label>缓存有效期</label>
+                    <input type="number" id="cfgCacheTTL" min="30" max="3600" step="30" readonly>
+                    <div class="unit">秒（30~3600，默认300）</div>
+                </div>
+                <div class="form-group">
+                    <label>元数据采集线程</label>
+                    <input type="number" id="cfgMetaWorkers" min="1" max="16" step="1" readonly>
+                    <div class="unit">个（1~16，默认4）</div>
+                </div>
+                <div class="form-group">
+                    <label>详情页查询线程</label>
+                    <input type="number" id="cfgDetailWorkers" min="1" max="16" step="1" readonly>
+                    <div class="unit">个（1~16，默认8）</div>
+                </div>
+                <div class="form-group">
+                    <label>元数据缓存上限</label>
+                    <input type="number" id="cfgMetaCacheMax" min="100" max="50000" step="100" readonly>
+                    <div class="unit">条（100~50000，默认5000）</div>
+                </div>
+                <div class="form-group">
+                    <label>服务器端口</label>
+                    <input type="number" id="cfgServerPort" min="1" max="65535" step="1" readonly>
+                    <div class="unit">端口号（1~65535，默认5000）</div>
+                </div>
+                <div class="form-group">
+                    <label>服务器绑定地址</label>
+                    <input type="text" id="cfgServerHost" placeholder="0.0.0.0" readonly>
+                    <div class="unit">IP地址（默认 0.0.0.0 监听所有网卡）</div>
+                </div>
+            </div>
+            <div style="margin-top:16px;text-align:right;">
+                <button class="btn btn-primary" id="advEditBtn" onclick="toggleAdvancedEdit()"><i data-lucide="pencil"></i> 编辑</button>
+                <button class="btn btn-primary" id="advSaveBtn" onclick="saveAdvancedConfig()" style="display:none;"><i data-lucide="check"></i> 保存</button>
+                <button class="btn btn-secondary" id="advCancelBtn" onclick="cancelAdvancedEdit()" style="display:none;">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-card collapsible-card" id="taskCard">
+        <div class="card-header" style="cursor:pointer;" onclick="toggleTaskManager()" title="点击展开/收起">
+            <h2><i data-lucide="activity"></i> 后台任务</h2>
+            <i data-lucide="chevron-down" id="taskArrow" class="arrow-down"></i>
+        </div>
+        <div class="card-body" id="taskBody" style="display:none;">
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i data-lucide="repeat" style="width:16px;height:16px;"></i> 视频转码</div>
+            <div class="transcode-stats" style="display:flex;gap:20px;margin-bottom:12px;">
+                <div class="stat-item">
+                    <span class="stat-num" id="tcTotal" style="font-size:22px;font-weight:700;color:var(--brand-color);">0</span>
+                    <span class="stat-label" style="font-size:12px;color:var(--text-secondary);margin-left:4px;">个任务</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-num" id="tcPending" style="font-size:22px;font-weight:700;color:#FF6B35;">0</span>
+                    <span class="stat-label" style="font-size:12px;color:var(--text-secondary);margin-left:4px;">等待中</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-num" id="tcRunning" style="font-size:22px;font-weight:700;color:#4ECDC4;">0</span>
+                    <span class="stat-label" style="font-size:12px;color:var(--text-secondary);margin-left:4px;">转码中</span>
+                </div>
+            </div>
+            <div id="transcodeList" style="max-height:300px;overflow-y:auto;font-size:13px;color:var(--text-secondary);">
+                <div style="padding:12px;text-align:center;">队列为空，暂无转码任务</div>
+            </div>
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-color);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                    <div style="font-size:14px;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:6px;"><i data-lucide="file-search" style="width:16px;height:16px;"></i> 元数据补全</div>
+                    <button class="btn btn-primary" id="metaBtn" onclick="manualPopulateMeta()" style="padding:4px 12px;font-size:12px;">
+                        <i data-lucide="loader" id="metaBtnIcon" style="display:none;"></i>
+                        <i data-lucide="rotate-cw" id="metaBtnIcon2"></i> 手动补全
+                    </button>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:13px;color:var(--text-secondary);">已缓存: </span>
+                    <span id="metaCached" style="font-size:16px;font-weight:700;color:var(--brand-color);">-</span>
+                    <span style="font-size:12px;color:var(--text-secondary);"> / </span>
+                    <span id="metaTotal" style="font-size:16px;font-weight:700;">-</span>
+                </div>
+                <div id="metaProgress" style="display:none;margin-top:8px;">
+                    <div class="tc-progress-bar"><div class="tc-progress-fill" id="metaProgressFill" style="width:0%;"></div></div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;" id="metaProgressText">补全中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-card collapsible-card">
+        <div class="card-header" style="cursor:pointer;" onclick="toggleDataManager()" title="点击展开/收起">
+            <h2><i data-lucide="hard-drive"></i> 数据管理</h2>
+            <i data-lucide="chevron-down" id="dataArrow" class="arrow-down"></i>
+        </div>
+        <div class="card-body" id="dataBody" style="display:none;">
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:10px;">清理缓存</div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">缩略图缓存</span>
+                        <span class="setting-desc">清除缩略图生成状态缓存</span>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="clearCache('thumbnail')"><i data-lucide="trash"></i> 清理</button>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">视频元数据缓存</span>
+                        <span class="setting-desc">清除分辨率、时长等元数据缓存</span>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="clearCache('video_meta')"><i data-lucide="trash"></i> 清理</button>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">系列缓存</span>
+                        <span class="setting-desc">清除视频列表缓存，重新扫描时生效</span>
+                    </div>
+                    <button class="btn btn-secondary btn-sm" onclick="clearCache('series')"><i data-lucide="trash"></i> 清理</button>
+                </div>
+                <div class="setting-row" style="margin-top:8px;padding-top:12px;border-top:1px solid var(--border-color);">
+                    <div class="setting-info">
+                        <span class="setting-label">全部缓存</span>
+                        <span class="setting-desc">一键清理所有缓存</span>
+                    </div>
+                    <button class="btn btn-danger btn-sm" onclick="clearCache('all')"><i data-lucide="trash-2"></i> 清理全部缓存</button>
+                </div>
+            </div>
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border-color);">
+                <div style="font-size:14px;font-weight:600;color:var(--text-primary);margin-bottom:10px;">隐藏视频</div>
+                <div id="hiddenSeriesContent" style="font-size:13px;color:var(--text-secondary);">
+                    <div style="text-align:center;padding:20px;">加载中...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="settings-card collapsible-card">
+        <div class="card-header" style="cursor:pointer;" onclick="toggleHelp()" title="点击展开/收起">
+            <h2><i data-lucide="info"></i> 使用说明</h2>
+            <i data-lucide="chevron-down" id="helpArrow" class="arrow-down"></i>
+        </div>
+        <div class="card-body" id="helpBody" style="display:none;overflow:hidden;transition:max-height 0.25s ease;">
+            <div style="font-size:13px;line-height:1.9;color:var(--text-secondary);">
+                <p><strong style="color:var(--text-primary);">快速入门</strong></p>
+                <p>1. 在「分类管理」中新建分类并添加视频所在目录<br>2. 服务器会自动扫描目录中的视频文件并生成缩略图<br>3. 首页即可看到所有视频，点击即可播放</p>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">视频识别规则</strong></p>
+                <ul style="padding-left:20px;margin:0;">
+                    <li><strong>合集</strong> — 目录下无直连视频，但有子目录含视频，子目录递归扫描生成独立卡片</li>
+                    <li><strong>扁平</strong> — 目录下有视频文件且无含视频的子目录，每个视频独立显示</li>
+                    <li><strong>混合</strong> — 目录下既有直连视频又有含视频的子目录，直立视频独立卡片 + 子目录递归</li>
+                    <li>目录标签上的彩色徽章标识目录类型，方便区分</li>
+                    <li>支持的格式：MP4（直接播放）、MKV/AVI/RMVB/FLV 等（需开启自动转码后转为 MP4）</li>
+                </ul>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">设置页卡片</strong></p>
+                <p>设置页共 5 个可折叠卡片：<strong>分类管理</strong>、<strong>高级设置</strong>、<strong>后台任务</strong>、<strong>数据管理</strong>、<strong>使用说明</strong>。点击卡片标题可展开/收起，有活跃任务时会自动展开对应卡片。所有开关切换后自动实时保存，数值类设置需点击「保存设置」按钮生效。</p>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">自动扫描</strong></p>
+                <p>位于「高级设置」卡片顶部。开启后，服务器会自动监控目录变化、生成缩略图和执行转码任务。关闭可节省系统资源，适合低配设备或长时间不添加新视频时使用。</p>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">转码设置</strong></p>
+                <p>位于「高级设置」卡片中，包含三个开关：</p>
+                <ul style="padding-left:20px;margin:6px 0;">
+                    <li><strong>自动转码为 MP4</strong> — 开启后，扫描到非 MP4 视频时自动加入转码队列；关闭时仅标记不转码（默认开启）</li>
+                    <li><strong>转码后删除原文件</strong> — 开启后节省磁盘空间，关闭则保留原始文件（默认开启）</li>
+                    <li><strong>GPU 硬件转码（NVENC）</strong> — 使用 NVIDIA 显卡加速转码，速度快 5~10 倍（需 NVIDIA 显卡 + 支持 NVENC 的 FFmpeg，未检测到时自动隐藏）</li>
+                </ul>
+                <p>转码支持两种模式：<strong>CPU 软编</strong>（libx264，兼容性好）和 <strong>GPU 硬件转码</strong>（NVIDIA NVENC）。仅浏览器兼容的 MP4（H.264/H.265/VP9/AV1 编码）可直接播放。以下情况会触发转码：</p>
+                <ul style="padding-left:20px;margin:6px 0;">
+                    <li><strong>非 MP4 格式</strong>（MKV、AVI、RMVB、FLV 等）→ 自动加入后台转码队列</li>
+                    <li><strong>非标 MP4 文件</strong>（如 MPEG-4 Part 2 / mpeg4 编码）→ 浏览器无法解码，自动标记为需转码</li>
+                </ul>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">后台任务</strong></p>
+                <p>合并了转码管理和元数据管理，展开后可查看转码队列状态（任务数、等待中、转码中）、取消转码任务，以及元数据补全进度和手动补全操作。</p>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">数据管理</strong></p>
+                <p>合并了缓存清理和隐藏视频管理。可按需清理缩略图/元数据/系列缓存，或一键清理全部缓存。隐藏视频管理支持恢复或彻底删除。</p>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">分类管理</strong></p>
+                <ul style="padding-left:20px;margin:0;">
+                    <li><strong>重新扫描</strong> — 检测目录变化并增量更新，只更新有改动的内容，保留原有数据。也可在首页点击分类图标快速扫描。自动扫描开启时无法使用</li>
+                    <li><strong>导出 / 导入</strong> — 备份与恢复所有配置和缓存（config.pb、分类、缩略图缓存、视频元数据缓存、隐藏系列、系列缓存），迁移到新电脑时可用，无需重新扫描。自动扫描开启时无法使用</li>
+                    <li><strong>清空</strong> — 清除所有分类配置，清空后可导入备份恢复</li>
+                    <li><strong>新建分类</strong> — 自定义名称、颜色和图标，分类下可添加多个目录</li>
+                    <li><strong>添加目录</strong> — 浏览本地磁盘选择文件夹，也可在「未分配目录」中快速添加</li>
+                    <li><strong>拖拽排序</strong> — 拖动分类卡片可调整首页分类的显示顺序</li>
+                    <li>红色警告标记表示目录不存在，请及时移除</li>
+                </ul>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">高级设置</strong></p>
+                <ul style="padding-left:20px;margin:0;">
+                    <li><strong>自动扫描</strong> — 控制目录监控、缩略图生成和转码的总开关</li>
+                    <li><strong>自动转码为 MP4</strong> — 控制扫描到非 MP4 时是否自动加入转码队列（默认开启，切换后实时保存）</li>
+                    <li><strong>转码后删除原文件</strong> — 开启后节省磁盘空间，关闭则保留原始文件（切换后实时保存）</li>
+                    <li><strong>GPU 硬件转码(NVENC)</strong> — 使用 NVIDIA 显卡硬件加速转码，速度提升 5~10 倍（切换后实时保存）</li>
+                    <li><strong>空闲检测间隔</strong> — 后台检查缩略图缺失和转码任务的时间间隔（默认 300 秒）</li>
+                    <li><strong>文件监控间隔</strong> — 检测目录文件变化的轮询频率（默认 5 秒）</li>
+                    <li><strong>缓存有效期</strong> — 视频列表缓存的过期时间（默认 300 秒）</li>
+                    <li><strong>元数据采集线程</strong> — 并行采集线程数，越大越快但 CPU 占用越高（默认 4）</li>
+                    <li><strong>详情页查询线程</strong> — 详情页并行查询的线程数（默认 8）</li>
+                    <li><strong>元数据缓存上限</strong> — 最多缓存的视频元数据条数，超出按 LRU 淘汰（默认 5000）</li>
+                    <li><strong>服务器端口 / 绑定地址</strong> — 修改后需重启服务器生效</li>
+                </ul>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">播放页快捷键</strong></p>
+                <ul style="padding-left:20px;margin:0;">
+                    <li><strong>空格</strong> — 播放 / 暂停</li>
+                    <li><strong>← / →</strong> — 快退 / 快进 10 秒</li>
+                    <li><strong>↑ / ↓</strong> — 调节音量</li>
+                    <li><strong>[ / ]</strong> — 上一集 / 下一集</li>
+                    <li><strong>F</strong> — 全屏切换</li>
+                </ul>
+
+                <p style="margin-top:14px;"><strong style="color:var(--text-primary);">服务器状态栏</strong></p>
+                <p>页面顶部显示服务器运行状态：<strong>版本号</strong>、<strong>运行时长</strong>、<strong>FFmpeg 状态</strong>（异常时请检查 ffmpeg 文件夹）、<strong>NVENC 状态</strong>（GPU 硬件转码是否可用/已启用）、<strong>CPU / GPU / 内存 / 磁盘</strong>占用率。鼠标悬停可查看详细信息。数据每 5~10 秒自动刷新。</p>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<div id="appData" style="display:none;"
+     data-categories='{{ categories_json }}'
+     data-dirs='{{ available_dirs|tojson }}'
+     data-nonexistent='{{ nonexistent_dirs|default("[]") }}'
+     data-dir-types='{{ dir_types_json|default("{}") }}'
+     data-auto-scan='{{ "true" if auto_scan_enabled else "false" }}'>
+</div>
+
+<script>
+(function() {
+    'use strict';
+    const appData = document.getElementById('appData');
+    const rawData = JSON.parse(appData.dataset.categories || '{"categories":[]}');
+    let categories = Array.isArray(rawData) ? rawData : (rawData.categories || []);
+    const ALL_DIRS = JSON.parse(appData.dataset.dirs || '[]');
+    const NONEXISTENT_DIRS = new Set(JSON.parse(appData.dataset.nonexistent || '[]'));
+    const DIR_TYPES = JSON.parse(appData.dataset.dirTypes || '{}');
+    let hasUnsavedChanges = false;
+    const autoScanToggle = document.getElementById('autoScanToggle');
+    autoScanToggle.checked = appData.dataset.autoScan === 'true';
+
+    autoScanToggle.addEventListener('change', async () => {
+        try {
+            const resp = await fetch('/api/auto-scan', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({enabled: autoScanToggle.checked})
+            });
+            const result = await resp.json();
+            if (result.ok) {
+                if (autoScanToggle.checked) {
+                    document.getElementById('categoriesBody').style.display = '';
+                    document.getElementById('categoriesArrow').classList.remove('arrow-down');
+                    document.getElementById('categoriesArrow').classList.add('arrow-up');
+                }
+                showToast(autoScanToggle.checked
+                    ? '<i data-lucide="check-circle"></i> 自动扫描已开启'
+                    : '<i data-lucide="pause-circle"></i> 自动扫描已关闭');
+                updateScanButtons();
+            } else {
+                autoScanToggle.checked = !autoScanToggle.checked;
+                showToast('<i data-lucide="x-circle"></i> 设置失败: ' + (result.error || '未知错误'));
+            }
+        } catch(e) {
+            autoScanToggle.checked = !autoScanToggle.checked;
+            showToast('<i data-lucide="x-circle"></i> 设置失败: ' + e.message);
+        }
+    });
+
+    function updateScanButtons() {
+        const isAutoScan = autoScanToggle.checked;
+        document.getElementById('manualScanBtn').disabled = isAutoScan;
+        document.getElementById('exportBtn').disabled = isAutoScan;
+        document.getElementById('importBtn').disabled = isAutoScan;
+    }
+    updateScanButtons();
+
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.innerHTML = msg;
+        t.classList.add('show');
+        initIcons();
+        setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    let _tcTimer = null;
+    let _tcPolling = false;
+
+    async function refreshTranscode() {
+        if (!_tcPolling) return;
+        try {
+            const resp = await fetch('/api/transcode');
+            const data = await resp.json();
+            if (!data.ok) {
+                document.getElementById('transcodeList').innerHTML = '<div style="padding:12px;color:#F45A9D;">加载失败: ' + escapeHtml(data.error || '') + '</div>';
+                _tcTimer = setTimeout(refreshTranscode, 3000);
+                return;
+            }
+            document.getElementById('tcTotal').textContent = data.total;
+            document.getElementById('tcPending').textContent = data.pending;
+            document.getElementById('tcRunning').textContent = data.in_progress;
+            const list = document.getElementById('transcodeList');
+            const progress = data.progress || {};
+            if (data.total === 0) {
+                list.innerHTML = '<div style="padding:12px;text-align:center;">队列为空，暂无转码任务</div>';
+                return;
+            }
+            let html = '';
+            if (data.in_progress_list && data.in_progress_list.length > 0) {
+                html += '<div style="padding:4px 0;font-weight:600;color:#4ECDC4;">转码中</div>';
+                data.in_progress_list.forEach(p => {
+                    const pct = progress[p] !== undefined ? Math.round(progress[p]) : 0;
+                    html += '<div class="tc-item" style="padding:8px 0;border-bottom:1px solid var(--border-color);">';
+                    html += '<div style="display:flex;align-items:center;gap:8px;">';
+                    html += '<i data-lucide="loader" style="color:#4ECDC4;flex-shrink:0;animation:spin 1s linear infinite;"></i>';
+                    html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(p) + '</span>';
+                    html += '<span class="tc-pct">' + pct + '%</span>';
+                    html += '<button onclick="cancelTranscode(\'' + escapeHtml(p.replace(/\\/g, '\\\\').replace(/'/g, "\\'")) + '\')" style="background:none;border:none;color:#F45A9D;cursor:pointer;font-size:16px;padding:2px 6px;" title="取消">×</button>';
+                    html += '</div>';
+                    html += '<div class="tc-progress-bar"><div class="tc-progress-fill" style="width:' + pct + '%;"></div></div>';
+                    html += '</div>';
+                });
+            }
+            if (data.queue && data.queue.length > 0) {
+                html += '<div style="padding:4px 0;font-weight:600;color:#FF6B35;margin-top:4px;">等待中</div>';
+                data.queue.forEach(p => {
+                    html += '<div class="tc-item" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-color);">';
+                    html += '<i data-lucide="clock" style="color:#FF6B35;flex-shrink:0;"></i>';
+                    html += '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + escapeHtml(p) + '</span>';
+                    html += '<button onclick="cancelTranscode(\'' + escapeHtml(p.replace(/\\/g, '\\\\').replace(/'/g, "\\'")) + '\')" style="background:none;border:none;color:#F45A9D;cursor:pointer;font-size:16px;padding:2px 6px;" title="取消">×</button>';
+                    html += '</div>';
+                });
+            }
+            list.innerHTML = html;
+            initIcons();
+            // 展开状态下持续轮询（有任务时 2 秒间隔快速更新，无任务时 5 秒慢速检测新任务）
+            _tcTimer = setTimeout(refreshTranscode, data.total > 0 ? 2000 : 5000);
+        } catch(e) {
+            document.getElementById('transcodeList').innerHTML = '<div style="padding:12px;color:#F45A9D;">加载失败: ' + escapeHtml(e.message) + '</div>';
+            _tcTimer = setTimeout(refreshTranscode, 5000);
+        }
+    }
+
+    async function cancelTranscode(path) {
+        try {
+            const resp = await fetch('/api/transcode/cancel', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({path: path})
+            });
+            const data = await resp.json();
+            if (data.removed) {
+                showToast('<i data-lucide="check-circle"></i> 已取消: ' + path.split(/[/\\]/).pop());
+            } else {
+                showToast(path.split(/[/\\]/).pop() + ' 不在队列中');
+            }
+            if (_tcTimer) clearTimeout(_tcTimer);
+            refreshTranscode();
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 取消失败: ' + e.message);
+        }
+    }
+
+    // 不自动轮询，展开时再刷新
+    window.refreshTranscode = refreshTranscode;
+    window.cancelTranscode = cancelTranscode;
+
+    // ========== 元数据管理 ==========
+    async function loadMetaStats() {
+        try {
+            const resp = await fetch('/api/meta/stats');
+            const data = await resp.json();
+            document.getElementById('metaCached').textContent = data.cached;
+            document.getElementById('metaTotal').textContent = data.total;
+        } catch(e) {}
+    }
+
+    let _metaPolling = false;
+    async function manualPopulateMeta() {
+        const btn = document.getElementById('metaBtn');
+        const icon1 = document.getElementById('metaBtnIcon');
+        const icon2 = document.getElementById('metaBtnIcon2');
+        const prog = document.getElementById('metaProgress');
+        const fill = document.getElementById('metaProgressFill');
+        const text = document.getElementById('metaProgressText');
+        btn.disabled = true;
+        icon1.style.display = 'inline';
+        icon2.style.display = 'none';
+        // 初始化进度条状态
+        fill.style.width = '0%';
+        text.textContent = '补全中...';
+        prog.style.display = 'block';
+        try {
+            const resp = await fetch('/api/meta/populate', {method: 'POST'});
+            const data = await resp.json();
+            if (!data.ok) {
+                showToast('<i data-lucide="x-circle"></i> ' + (data.error || '启动失败'));
+                btn.disabled = false;
+                icon1.style.display = 'none';
+                icon2.style.display = 'inline';
+                fill.style.width = '0%';
+                text.textContent = '补全中...';
+                prog.style.display = 'none';
+                return;
+            }
+            showToast('<i data-lucide="check-circle"></i> ' + (data.message || '已开始补全'));
+            _metaPolling = true;
+            pollMetaStatus();
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> ' + e.message);
+            btn.disabled = false;
+            icon1.style.display = 'none';
+            icon2.style.display = 'inline';
+            fill.style.width = '0%';
+            text.textContent = '补全中...';
+            prog.style.display = 'none';
+        }
+    }
+
+    async function pollMetaStatus() {
+        if (!_metaPolling) return;
+        try {
+            const resp = await fetch('/api/meta/status');
+            const data = await resp.json();
+            const fill = document.getElementById('metaProgressFill');
+            const text = document.getElementById('metaProgressText');
+            // 实时更新已缓存 / 总数（每次请求都重新计算）
+            document.getElementById('metaCached').textContent = data.cached;
+            document.getElementById('metaTotal').textContent = data.total || document.getElementById('metaTotal').textContent;
+
+            if (data.running) {
+                const pct = data.total > 0 ? Math.round((data.done / data.total) * 100) : 0;
+                fill.style.width = pct + '%';
+                const current = data.current ? ' - ' + data.current : '';
+                text.textContent = '补全中: ' + data.done + ' / ' + data.total + current;
+                setTimeout(pollMetaStatus, 1000);
+            } else {
+                _metaPolling = false;
+                const btn = document.getElementById('metaBtn');
+                const fill = document.getElementById('metaProgressFill');
+                const text = document.getElementById('metaProgressText');
+                // 重置按钮状态：恢复可用 + 恢复样式
+                btn.disabled = false;
+                document.getElementById('metaBtnIcon').style.display = 'none';
+                document.getElementById('metaBtnIcon2').style.display = 'inline';
+                // 清空并隐藏进度条
+                fill.style.width = '0%';
+                text.textContent = '补全中...';
+                document.getElementById('metaProgress').style.display = 'none';
+                // 刷新统计数字
+                loadMetaStats();
+                // 区分：正常完成 vs 全部已缓存 vs 异常
+                if (data.error) {
+                    showToast('<i data-lucide="x-circle"></i> 元数据补全异常: ' + data.error);
+                } else if (data.total === 0 && data.done === 0) {
+                    showToast('<i data-lucide="check-circle"></i> 所有视频已有有效缓存，无需补全');
+                } else {
+                    showToast('<i data-lucide="check-circle"></i> 元数据补全完成，已缓存 ' + data.cached + ' / ' + data.total);
+                }
+            }
+        } catch(e) {
+            setTimeout(pollMetaStatus, 2000);
+        }
+    }
+
+    // 不自动加载，展开时再加载
+    window.manualPopulateMeta = manualPopulateMeta;
+
+    function escapeHtml(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function getValidIcon(iconName) {
+        if (!iconName) return 'folder';
+        const validIcons = [
+            'tv', 'film', 'music', 'mic', 'headphones', 'speaker',
+            'gamepad-2', 'clapperboard', 'popcorn', 'disc', 'disc-2',
+            'star', 'heart', 'sparkles', 'flame', 'gem', 'zap',
+            'folder', 'image', 'camera', 'video', 'monitor',
+            'play', 'pause', 'skip-forward', 'skip-back',
+            'radio', 'podcast', 'tv-minimal', 'library'
+        ];
+        return validIcons.includes(iconName) ? iconName : 'folder';
+    }
+
+    function getAssignedSet() {
+        const assigned = new Set();
+        categories.forEach(cat => (cat.dirs || []).forEach(d => assigned.add(d)));
+        return assigned;
+    }
+
+    function getUnassignedDirs() {
+        return ALL_DIRS.filter(d => !getAssignedSet().has(d));
+    }
+
+    function markChanged() {
+        hasUnsavedChanges = true;
+    }
+
+    function render() {
+        const container = document.getElementById('categoriesList');
+        container.innerHTML = '';
+
+        categories.forEach((cat, idx) => {
+            const section = document.createElement('div');
+            section.className = 'category-section';
+            section.dataset.idx = idx;
+            section.draggable = true;
+
+            const dirCount = (cat.dirs || []).length;
+            const isFirst = idx === 0;
+            const isLast = idx === categories.length - 1;
+            const missingDirs = (cat.dirs || []).filter(d => NONEXISTENT_DIRS.has(d));
+            const warningHtml = missingDirs.length > 0
+                ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:12px;color:#F45A9D;font-weight:400;"><i data-lucide="alert-circle" style="width:14px;height:14px;"></i> ' + missingDirs.length + '个目录不存在，请删除</span>'
+                : '';
+            section.innerHTML = `
+                <div class="section-header">
+                    <div class="drag-handle" title="拖拽排序"><i data-lucide="grip-vertical"></i></div>
+                    <span class="cat-icon"><i data-lucide="${getValidIcon(cat.icon)}"></i></span>
+                    <div class="cat-info">
+                        <span class="cat-name">${escapeHtml(cat.name)} <span class="cat-count">${dirCount} 个目录</span> ${warningHtml}</span>
+                    </div>
+                    <div class="cat-actions">
+                        <button class="btn btn-secondary btn-sm scan-cat-btn" ${dirCount === 0 ? 'disabled' : ''}><i data-lucide="rotate-cw"></i> 扫描</button>
+                        <button class="btn btn-primary btn-sm add-dir-btn"><i data-lucide="folder-plus"></i> 添加目录</button>
+                        <button class="btn btn-secondary btn-sm del-cat-btn"><i data-lucide="trash"></i> 删除</button>
+                    </div>
+                </div>
+                <div class="section-body">
+                    ${dirCount > 0 ? '<div class="dir-grid"></div>' : '<div class="empty-state">暂无目录，点击上方「添加目录」按钮</div>'}
+                </div>`;
+
+            if (dirCount > 0) {
+                const grid = section.querySelector('.dir-grid');
+                cat.dirs.forEach(dir => {
+                    const tag = document.createElement('div');
+                    const missing = NONEXISTENT_DIRS.has(dir);
+                    const dirType = DIR_TYPES[dir] || '';
+                    const typeLabel = dirType ? `<span class="dir-type-badge dir-type-${dirType}">${dirType}</span>` : '';
+                    tag.className = 'dir-tag' + (missing ? ' dir-missing' : '');
+                    tag.innerHTML = `
+                        <span class="icon">${missing ? '<i data-lucide="alert-circle"></i>' : '<i data-lucide="folder"></i>'}</span>
+                        <span class="name" title="${escapeHtml(dir)}">${escapeHtml(dir)}</span>
+                        ${typeLabel}
+                        <button class="del" title="移除">×</button>
+                    `;
+                    tag.querySelector('.del').addEventListener('click', () => removeDir(idx, dir));
+                    grid.appendChild(tag);
+                });
+            }
+
+            section.querySelector('.add-dir-btn').addEventListener('click', () => openDirSelectDialog(idx));
+            section.querySelector('.del-cat-btn').addEventListener('click', () => deleteCategory(idx));
+            section.querySelector('.scan-cat-btn').addEventListener('click', () => scanCategory(idx));
+
+            container.appendChild(section);
+        });
+    }
+
+    async function openDirSelectDialog(catIdx) {
+        const cat = categories[catIdx];
+        const unassigned = getUnassignedDirs();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'dialog-overlay';
+        overlay.innerHTML = `
+            <div class="dialog" style="width:560px;max-width:90vw;max-height:80vh;display:flex;flex-direction:column;">
+                <div class="dialog-header">
+                    <span>添加目录到「${escapeHtml(cat.name)}」</span>
+                    <button class="dialog-close">×</button>
+                </div>
+                <div class="dialog-body" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+                    <div id="browserToolbar" style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-shrink:0;">
+                        <button class="btn btn-secondary btn-sm" id="browserUp" title="返回上级"><i data-lucide="corner-left-up"></i> 上级</button>
+                        <div id="breadcrumb" style="flex:1;font-size:13px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+                    </div>
+                    <div id="driveList" style="flex:1;overflow-y:auto;"></div>
+                    ${unassigned.length > 0 ? `
+                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-color);flex-shrink:0;">
+                        <label style="font-size:13px;color:var(--text-secondary);margin-bottom:6px;display:block;">已有目录（点击快速添加）</label>
+                        <div class="quick-dir-grid" style="display:flex;flex-wrap:wrap;gap:6px;">
+                            ${unassigned.map(d => `<button class="btn btn-sm quick-add-btn" data-dir="${escapeHtml(d)}">${escapeHtml(d)}</button>`).join('')}
+                        </div>
+                    </div>` : ''}
+                </div>
+                <div class="dialog-footer">
+                    <button class="btn btn-secondary" id="cancelDirSelect">取消</button>
+                    <button class="btn btn-primary" id="confirmDirSelect">添加当前目录</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+
+        overlay.querySelector('.dialog-close').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+        document.getElementById('cancelDirSelect').addEventListener('click', () => overlay.remove());
+
+        let currentPath = '';
+        const driveListEl = document.getElementById('driveList');
+        const breadcrumbEl = document.getElementById('breadcrumb');
+
+        let _drivesReqId = 0;
+        function renderDrives() {
+            currentPath = '';
+            breadcrumbEl.textContent = '我的电脑';
+            driveListEl.innerHTML = '<div style="color:var(--text-secondary);padding:8px 0;">加载中...</div>';
+            const reqId = ++_drivesReqId;
+            fetch('/api/drives').then(r => {
+                if (reqId !== _drivesReqId) return;
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(drives => {
+                if (reqId !== _drivesReqId) return;
+                if (!drives.length) {
+                    driveListEl.innerHTML = '<div style="color:var(--text-secondary);padding:8px 0;">未检测到磁盘</div>';
+                    return;
+                }
+                driveListEl.innerHTML = drives.map(d =>
+                    `<div class="browser-item" data-path="${escapeHtml(d)}"><span class="icon"><i data-lucide="hard-drive"></i></span><span class="name">${escapeHtml(d)}</span></div>`
+                ).join('');
+                bindItems();
+                initIcons();
+            }).catch(e => {
+                if (reqId !== _drivesReqId) return;
+                driveListEl.innerHTML = '<div style="color:#F45A9D;padding:8px 0;">加载磁盘失败: ' + escapeHtml(e.message) + '</div>';
+            });
+        }
+
+        function browseDir(path) {
+            currentPath = path;
+            var parts = path.replace(/\\/g, '/').split('/').filter(Boolean);
+            breadcrumbEl.textContent = parts.join(' / ') || path;
+            driveListEl.innerHTML = '<div style="color:var(--text-secondary);padding:8px 0;">加载中...</div>';
+            fetch('/api/browse?path=' + encodeURIComponent(path) + '&allow_all=true').then(r => {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            }).then(data => {
+                if (!data.ok) { driveListEl.innerHTML = '<div style="color:#F45A9D;padding:8px 0;">' + escapeHtml(data.error) + '</div>'; return; }
+                if (!data.entries.length) {
+                    driveListEl.innerHTML = '<div style="color:var(--text-secondary);padding:8px 0;">（空目录，无子文件夹）</div>';
+                } else {
+                    driveListEl.innerHTML = data.entries.map(e =>
+                        `<div class="browser-item" data-path="${escapeHtml(e.path)}"><span class="icon"><i data-lucide="folder"></i></span><span class="name">${escapeHtml(e.name)}</span></div>`
+                    ).join('');
+                }
+                bindItems();
+                initIcons();
+            }).catch(e => {
+                driveListEl.innerHTML = '<div style="color:#F45A9D;padding:8px 0;">加载失败: ' + escapeHtml(e.message) + '</div>';
+            });
+        }
+
+        function bindItems() {
+            driveListEl.querySelectorAll('.browser-item').forEach(item => {
+                item.addEventListener('click', () => browseDir(item.dataset.path));
+            });
+        }
+
+        document.getElementById('browserUp').addEventListener('click', function() {
+            if (!currentPath) return;
+            var parent = currentPath.replace(/[/\\][^/\\]+$/, '') || '';
+            if (parent) { browseDir(parent); } else { renderDrives(); }
+        });
+
+        document.getElementById('confirmDirSelect').addEventListener('click', async function() {
+            if (!currentPath) { showToast('请先浏览并选择一个目录'); return; }
+            overlay.remove();
+            await addDirToCategory(catIdx, currentPath);
+        });
+
+        overlay.querySelectorAll('.quick-add-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                overlay.remove();
+                await addDirToCategory(catIdx, btn.dataset.dir);
+            });
+        });
+
+        renderDrives();
+    }
+
+    async function addDirToCategory(catIdx, dir) {
+        const cat = categories[catIdx];
+        if (!cat.dirs) cat.dirs = [];
+        if (cat.dirs.includes(dir)) {
+            showToast('该目录已在当前分类中');
+            return;
+        }
+        cat.dirs.push(dir);
+        render();
+        initIcons();
+        try {
+            await fetch('/api/categories', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({categories: categories})
+            });
+            showToast(`已添加「${dir.slice(0, 20)}...」到「${cat.name}」`);
+        } catch(e) {
+            showToast('保存失败: ' + e.message);
+        }
+    }
+
+    async function scanCategory(catIdx) {
+        const cat = categories[catIdx];
+        if (!cat.id) {
+            showToast('分类 ID 不存在，请先保存分类');
+            return;
+        }
+        try {
+            showToast('<i data-lucide="loader"></i> 正在扫描「' + cat.name + '」...');
+            const resp = await fetch('/api/category/rescan', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({category_id: cat.id})
+            });
+            const result = await resp.json();
+            if (result.ok) {
+                const info = [];
+                if (result.added > 0) info.push(result.added + ' 新增');
+                if (result.updated > 0) info.push(result.updated + ' 更新');
+                if (result.removed > 0) info.push(result.removed + ' 删除');
+                const msg = info.length > 0 ? '：' + info.join('、') : '';
+                showToast('<i data-lucide="check-circle"></i> 「' + cat.name + '」扫描完成' + msg);
+                // 刷新页面以显示更新后的数据
+                setTimeout(() => {
+                    location.reload();
+                }, 1000);
+            } else {
+                showToast('<i data-lucide="x-circle"></i> 扫描失败: ' + (result.error || '未知错误'));
+            }
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 扫描失败: ' + e.message);
+        }
+    }
+
+    async function removeDir(catIdx, dir) {
+        const cat = categories[catIdx];
+        cat.dirs = cat.dirs.filter(d => d !== dir);
+        render();
+        initIcons();
+        try {
+            await fetch('/api/categories', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({categories: categories})
+            });
+            showToast(`已移除「${dir}」`);
+        } catch(e) {
+            showToast('保存失败: ' + e.message);
+        }
+    }
+
+    async function deleteCategory(catIdx) {
+        const cat = categories[catIdx];
+        if (!confirm(`确定删除分类「${cat.name}」？\n其下的目录将变为未分配状态。`)) return;
+        categories.splice(catIdx, 1);
+        render();
+        initIcons();
+        try {
+            await fetch('/api/categories', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({categories: categories})
+            });
+            showToast(`分类「${cat.name}」已删除`);
+        } catch(e) {
+            showToast('保存失败: ' + e.message);
+        }
+    }
+
+    window.moveCat = async function(catIdx, direction) {
+        const newIdx = catIdx + direction;
+        if (newIdx < 0 || newIdx >= categories.length) return;
+        const temp = categories[catIdx];
+        categories[catIdx] = categories[newIdx];
+        categories[newIdx] = temp;
+        render();
+        initIcons();
+        try {
+            await fetch('/api/categories', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({categories: categories})
+            });
+        } catch(e) {
+            showToast('自动保存失败: ' + e.message);
+        }
+    };
+
+    // 拖拽排序
+    let dragSrcEl = null;
+
+    document.addEventListener('dragstart', function(e) {
+        if (e.target.classList && e.target.classList.contains('category-section')) {
+            dragSrcEl = e.target;
+            e.target.style.opacity = '0.5';
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', e.target.dataset.idx);
+        }
+    });
+
+    document.addEventListener('dragend', function(e) {
+        if (e.target.classList && e.target.classList.contains('category-section')) {
+            e.target.style.opacity = '';
+            document.querySelectorAll('.category-section').forEach(el => {
+                el.classList.remove('drag-over', 'drag-placeholder');
+            });
+        }
+    });
+
+    document.addEventListener('dragover', function(e) {
+        const section = e.target.closest('.category-section');
+        if (!section || section === dragSrcEl) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        section.classList.add('drag-over');
+    });
+
+    document.addEventListener('dragleave', function(e) {
+        const section = e.target.closest('.category-section');
+        if (!section) return;
+        if (!section.contains(e.relatedTarget)) {
+            section.classList.remove('drag-over');
+        }
+    });
+
+    document.addEventListener('drop', async function(e) {
+        e.preventDefault();
+        const targetSection = e.target.closest('.category-section');
+        if (!targetSection || targetSection === dragSrcEl || !dragSrcEl) return;
+        targetSection.classList.remove('drag-over');
+
+        const fromIdx = parseInt(dragSrcEl.dataset.idx);
+        const toIdx = parseInt(targetSection.dataset.idx);
+        if (isNaN(fromIdx) || isNaN(toIdx) || fromIdx === toIdx) return;
+
+        const [moved] = categories.splice(fromIdx, 1);
+        categories.splice(toIdx, 0, moved);
+
+        dragSrcEl.style.opacity = '';
+        dragSrcEl = null;
+
+        render();
+        initIcons();
+
+        try {
+            await fetch('/api/categories', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({categories: categories})
+            });
+            showToast('<i data-lucide="check-circle"></i> 分类顺序已保存');
+        } catch(err) {
+            showToast('<i data-lucide="x-circle"></i> 保存失败: ' + err.message);
+        }
+    });
+
+    window.deleteCategory = deleteCategory;
+
+    const COLORS = ['#FB7299','#FF6B35','#4ECDC4','#9B59B6','#3498DB','#E67E22','#1ABC9C','#E74C3C','#F39C12','#2ECC71'];
+    const ICONS = [
+        'tv', 'film', 'music', 'mic', 'headphones', 'speaker',
+        'gamepad-2', 'clapperboard', 'popcorn', 'disc', 'disc-2',
+        'star', 'heart', 'sparkles', 'flame', 'gem', 'zap',
+        'folder', 'image', 'camera', 'video', 'monitor',
+        'play', 'pause', 'skip-forward', 'skip-back',
+        'radio', 'podcast', 'tv-minimal', 'library'
+    ];
+
+    function openNewCatDialog() {
+        const overlay = document.createElement('div');
+        overlay.className = 'dialog-overlay new-cat-dialog';
+        overlay.innerHTML = `
+            <div class="dialog">
+                <div class="dialog-header">
+                    <span>新建分类</span>
+                    <button class="dialog-close">×</button>
+                </div>
+                <div class="dialog-body">
+                    <div class="form-group">
+                        <label>分类名称</label>
+                        <input type="text" id="newCatName" placeholder="输入分类名称" maxlength="15">
+                    </div>
+                    <div class="form-group">
+                        <label>选择颜色</label>
+                        <div class="color-picker">
+                            ${COLORS.map((c, i) => `<div class="color-option${i===0?' selected':''}" data-color="${c}" style="background:${c}"></div>`).join('')}
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>选择图标</label>
+                        <div class="icon-picker">
+                            ${ICONS.map((ic, i) => `<div class="icon-option${i===0?' selected':''}" data-icon="${ic}"><i data-lucide="${ic}"></i></div>`).join('')}
+                        </div>
+                    </div>
+                </div>
+                <div class="dialog-footer">
+                    <button class="btn btn-secondary" id="cancelNewCat">取消</button>
+                    <button class="btn btn-primary" id="confirmNewCat">创建</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        initIcons();
+
+        const closeBtn = document.getElementById('cancelNewCat');
+        const confirmBtn = document.getElementById('confirmNewCat');
+
+        if (!closeBtn || !confirmBtn) return;
+
+        overlay.querySelector('.dialog-close').addEventListener('click', () => overlay.remove());
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+        overlay.querySelectorAll('.color-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                overlay.querySelectorAll('.color-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+            });
+        });
+
+        overlay.querySelectorAll('.icon-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                overlay.querySelectorAll('.icon-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+            });
+        });
+
+        closeBtn.addEventListener('click', function() { overlay.remove(); });
+
+        confirmBtn.addEventListener('click', async function() {
+            var nameInput = document.getElementById('newCatName');
+            var name = nameInput.value.trim();
+            if (!name) { showToast('请输入分类名称'); nameInput.focus(); return; }
+
+            var colorEl = overlay.querySelector('.color-option.selected');
+            var color = colorEl ? colorEl.dataset.color : COLORS[0];
+            var iconEl = overlay.querySelector('.icon-option.selected');
+            var icon = iconEl ? iconEl.dataset.icon : ICONS[0];
+
+            categories.push({
+                id: 'cat_' + Date.now(),
+                name: name,
+                icon: icon,
+                color: color,
+                dirs: []
+            });
+
+            overlay.remove();
+            render();
+            initIcons();
+            try {
+                await fetch('/api/categories', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({categories: categories})
+                });
+                showToast('分类「' + name + '」创建成功');
+            } catch(e) {
+                showToast('保存失败: ' + e.message);
+            }
+        });
+
+        document.getElementById('newCatName').focus();
+    }
+
+    window.openNewCatDialog = openNewCatDialog;
+
+    window.goHome = async function() {
+        await fetch('/api/categories', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({categories: categories})
+        });
+        location.href = '/';
+    };
+
+    window.manualSave = async function() {
+        try {
+            showToast('<i data-lucide="loader"></i> 后台正在重新扫描...');
+            const resp = await fetch('/api/categories', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({categories: categories, force_scan: true})
+            });
+            const result = await resp.json();
+            if (result.ok) {
+                showToast('<i data-lucide="check-circle"></i> 已触发重新扫描，后台处理中');
+            } else {
+                showToast('<i data-lucide="x-circle"></i> 扫描失败: ' + (result.error || '未知错误'));
+            }
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 扫描失败: ' + e.message);
+        }
+    };
+
+    window.exportCategories = async function() {
+        if (!confirm('将导出以下文件到程序目录：\nconfig.pb、categories.pb、thumbnail_cache.pb、video_meta_cache.pb、hidden_series.pb、series_cache.pb\n\n是否继续？')) return;
+        try {
+            const resp = await fetch('/api/categories/export');
+            const result = await resp.json();
+            if (result.ok) {
+                showToast('<i data-lucide="download"></i> 已导出到: ' + result.path);
+            } else {
+                showToast('<i data-lucide="x-circle"></i> 导出失败: ' + result.error);
+            }
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 导出失败: ' + e.message);
+        }
+    };
+
+    window.importCategories = async function() {
+        if (!confirm('将从程序目录导入以下文件：\nconfig.pb、categories.pb、thumbnail_cache.pb、video_meta_cache.pb、hidden_series.pb、series_cache.pb\n\n导入将覆盖当前数据，是否继续？')) return;
+        try {
+            const resp = await fetch('/api/categories/import', {
+                method: 'POST'
+            });
+            const result = await resp.json();
+            if (result.ok) {
+                showToast('<i data-lucide="upload"></i> 导入成功（' + result.count + ' 个分类），页面将刷新');
+                location.reload();
+            } else {
+                showToast('<i data-lucide="x-circle"></i> 导入失败: ' + result.error);
+            }
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 导入失败: ' + e.message);
+        }
+    };
+
+    window.clearCategories = async function() {
+        if (!confirm('确定清空所有分类？清空后可导入之前导出的配置文件恢复。')) return;
+        try {
+            const resp = await fetch('/api/categories/clear', {method: 'POST'});
+            const result = await resp.json();
+            if (result.ok) {
+                showToast('<i data-lucide="trash-2"></i> 已清空，页面将刷新');
+                location.reload();
+            } else {
+                showToast('<i data-lucide="x-circle"></i> 清空失败');
+            }
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 清空失败: ' + e.message);
+        }
+    };
+
+    // 高级设置：加载配置
+    const CFG_FIELDS = {
+        idle_check_interval: 'cfgIdleCheck',
+        watcher_interval: 'cfgWatcher',
+        cache_ttl: 'cfgCacheTTL',
+        meta_workers: 'cfgMetaWorkers',
+        detail_workers: 'cfgDetailWorkers',
+        meta_cache_max: 'cfgMetaCacheMax',
+        server_port: 'cfgServerPort',
+        server_host: 'cfgServerHost'
+    };
+    (async function loadAdvancedConfig() {
+        try {
+            const resp = await fetch('/api/config');
+            const data = await resp.json();
+            if (data.ok) {
+                const cfg = data.config;
+                // 转码后删除原文件
+                const deleteEl = document.getElementById('cfgDeleteOriginal');
+            if (deleteEl) deleteEl.checked = cfg.delete_original_after_transcode !== false;
+            // 自动转码为 MP4
+            const autoTranscodeEl = document.getElementById('cfgAutoTranscode');
+            if (autoTranscodeEl) autoTranscodeEl.checked = cfg.auto_transcode !== false;
+            // GPU 转码开关
+                const gpuEl = document.getElementById('cfgGpuTranscode');
+                const gpuRow = document.getElementById('gpuTranscodeRow');
+                if (gpuEl && gpuRow) {
+                    if (!cfg.nvenc_available) {
+                        gpuRow.style.display = 'none';
+                    } else {
+                        gpuEl.checked = cfg.gpu_transcode === true;
+                        gpuEl.disabled = false;
+                    }
+                }
+                // 其他高级设置
+                for (const [key, id] of Object.entries(CFG_FIELDS)) {
+                    const el = document.getElementById(id);
+                    if (el && cfg[key] !== undefined) el.value = cfg[key];
+                }
+                // 加载完成后备份当前值，供取消编辑时恢复
+                _snapshotAdvancedValues();
+            }
+        } catch(e) { /* 静默失败 */ }
+    })();
+
+    // 高级设置 toggle 实时保存
+    function bindToggleSave(id, configKey, labelOn, labelOff) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', async () => {
+            try {
+                const resp = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({config: {[configKey]: el.checked}})
+                });
+                const data = await resp.json();
+                if (data.ok) {
+                    showToast(el.checked ? labelOn : labelOff);
+                } else {
+                    el.checked = !el.checked;
+                    showToast('<i data-lucide="x-circle"></i> 保存失败: ' + (data.error || ''));
+                }
+            } catch(e) {
+                el.checked = !el.checked;
+                showToast('<i data-lucide="x-circle"></i> 保存失败: ' + e.message);
+            }
+        });
+    }
+    bindToggleSave('cfgAutoTranscode', 'auto_transcode',
+        '<i data-lucide="check-circle"></i> 自动转码已开启',
+        '<i data-lucide="pause-circle"></i> 自动转码已关闭');
+    bindToggleSave('cfgDeleteOriginal', 'delete_original_after_transcode',
+        '<i data-lucide="check-circle"></i> 转码后将删除原文件',
+        '<i data-lucide="pause-circle"></i> 转码后将保留原文件');
+    bindToggleSave('cfgGpuTranscode', 'gpu_transcode',
+        '<i data-lucide="check-circle"></i> GPU 转码已开启',
+        '<i data-lucide="pause-circle"></i> GPU 转码已关闭');
+
+
+    window.toggleAdvanced = function() {
+        const body = document.getElementById('advancedBody');
+        const arrow = document.getElementById('advancedArrow');
+        const collapsed = body.style.display === 'none';
+        body.style.display = collapsed ? '' : 'none';
+        arrow.classList.toggle('arrow-up', !collapsed);
+        arrow.classList.toggle('arrow-down', collapsed);
+    };
+
+    window.toggleAutoScan = function() {
+        // 已合并到高级设置卡片中，不再需要独立折叠
+    };
+
+    window.toggleCategories = function() {
+        const body = document.getElementById('categoriesBody');
+        const arrow = document.getElementById('categoriesArrow');
+        const collapsed = body.style.display === 'none';
+        body.style.display = collapsed ? '' : 'none';
+        arrow.classList.toggle('arrow-up', !collapsed);
+        arrow.classList.toggle('arrow-down', collapsed);
+    };
+
+    window.toggleTaskManager = function() {
+        const body = document.getElementById('taskBody');
+        const arrow = document.getElementById('taskArrow');
+        const collapsed = body.style.display === 'none';
+        body.style.display = collapsed ? '' : 'none';
+        arrow.classList.toggle('arrow-up', !collapsed);
+        arrow.classList.toggle('arrow-down', collapsed);
+        if (collapsed) {
+            _tcPolling = true;
+            refreshTranscode();
+            loadMetaStats();
+        } else {
+            _tcPolling = false;
+            if (_tcTimer) { clearTimeout(_tcTimer); _tcTimer = null; }
+        }
+    };
+
+    window.toggleDataManager = function() {
+        const body = document.getElementById('dataBody');
+        const arrow = document.getElementById('dataArrow');
+        const collapsed = body.style.display === 'none';
+        body.style.display = collapsed ? '' : 'none';
+        arrow.classList.toggle('arrow-up', !collapsed);
+        arrow.classList.toggle('arrow-down', collapsed);
+        if (collapsed) loadHiddenSeries();
+    };
+
+    window.toggleHelp = function() {
+        const body = document.getElementById('helpBody');
+        const arrow = document.getElementById('helpArrow');
+        const collapsed = body.style.display === 'none';
+        if (collapsed) {
+            body.style.display = '';
+            body.style.maxHeight = body.scrollHeight + 'px';
+            arrow.classList.remove('arrow-down');
+            arrow.classList.add('arrow-up');
+        } else {
+            body.style.maxHeight = '0';
+            setTimeout(() => { body.style.display = 'none'; }, 250);
+            arrow.classList.remove('arrow-up');
+            arrow.classList.add('arrow-down');
+        }
+    };
+
+    // ========== 服务器状态栏（自动刷新） ==========
+    let _serverInfoTimer1 = null;  // 5秒定时器
+    let _serverInfoTimer2 = null;  // 10秒定时器
+    let _cachedServerInfo = null; // 缓存数据
+
+    function buildServerStatusHTML(info, refreshType) {
+        // refreshType: 'full'=完整, 'fast'=快速(CPU/内存/磁盘)
+        const nvencTag = (info.nvenc_available !== undefined) ? `<span style="display:inline-flex;align-items:center;gap:4px;"><i data-lucide="zap" style="width:14px!important;height:14px!important;color:${info.nvenc_available ? '#2ECC71' : '#95a5a6'};"></i> NVENC ${info.nvenc_available ? (info.gpu_transcode_enabled ? '已启用' : '可用') : '不支持'}</span>` : '';
+        return `
+            <span style="display:inline-flex;align-items:center;gap:4px;" title="服务器版本号"> <i data-lucide="book-check" style="width:14px!important;height:14px!important;color:var(--brand-color);"></i> v${info.version}</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;" title="服务器运行时长"> <i data-lucide="cable" style="width:14px!important;height:14px!important;color:var(--brand-color);"></i> ${info.uptime}</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;" title="FFmpeg 转码引擎状态，异常时请检查 ffmpeg 文件夹"> <i data-lucide="film" style="width:14px!important;height:14px!important;color:${info.ffmpeg_ok ? '#4ECDC4' : '#F45A9D'};"></i> FFmpeg <span style="color:${info.ffmpeg_ok ? '#4ECDC4' : '#F45A9D'};">${info.ffmpeg_ok ? '正常' : '异常'}</span></span>
+            ${nvencTag}
+            <span style="display:inline-flex;align-items:center;gap:4px;" title="CPU ${info.cpu_count}核，当前占用率 ${info.cpu_percent.toFixed(1)}%"> <i data-lucide="cpu" style="width:14px!important;height:14px!important;color:#3498DB;"></i> CPU ${info.cpu_count}核 ${info.cpu_percent.toFixed(1)}%</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;" title="${info.gpu_name || ''}${info.gpu_name ? '，编码器占用 ' + (info.gpu_encoder_percent !== null ? info.gpu_encoder_percent.toFixed(0) + '%' : 'N/A') : ''}"><i data-lucide="gpu" style="width:14px!important;height:14px!important;color:#E74C3C;"></i> GPU ${info.gpu_name ? info.gpu_name.replace(/\s*(GeForce |NVIDIA |AMD |Radeon |Intel\s+)?/gi, '').split(' ')[0] : ''} ${(info.gpu_encoder_percent !== null ? info.gpu_encoder_percent.toFixed(0) + '%' : 'N/A')}</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;" title="内存占用率 ${info.memory_percent.toFixed(1)}%"> <i data-lucide="memory-stick" style="width:14px!important;height:14px!important;color:#9B59B6;"></i> 内存 ${info.memory_percent.toFixed(1)}%</span>
+            <span style="display:inline-flex;align-items:center;gap:4px;" title="视频目录所在磁盘占用率 ${info.disk_percent.toFixed(1)}%"> <i data-lucide="hard-drive" style="width:14px!important;height:14px!important;color:#E67E22;"></i> 磁盘 ${info.disk_percent.toFixed(1)}%</span>
+        `;
+    }
+
+    async function loadServerStatusBarAll() {
+        // 完整刷新（包含GPU），每10秒
+        try {
+            const resp = await fetch('/api/server-info');
+            const data = await resp.json();
+            if (!data.ok) return;
+            _cachedServerInfo = data.info;
+            document.getElementById('serverStatusBar').innerHTML = buildServerStatusHTML(_cachedServerInfo, 'full');
+            initIcons();
+        } catch(e) {}
+    }
+
+    async function loadServerStatusBarFast() {
+        // 快速刷新（CPU/内存/磁盘），每5秒
+        try {
+            const resp = await fetch('/api/server-info');
+            const data = await resp.json();
+            if (!data.ok) return;
+            _cachedServerInfo = data.info;
+            document.getElementById('serverStatusBar').innerHTML = buildServerStatusHTML(_cachedServerInfo, 'fast');
+            initIcons();
+        } catch(e) {}
+    }
+
+    function startServerStatusBarRefresh() {
+        // 首次立即加载
+        loadServerStatusBarFast();
+        // 5秒刷新一次（CPU/内存/磁盘）
+        _serverInfoTimer1 = setInterval(loadServerStatusBarFast, 5000);
+        // 10秒刷新一次（完整数据含GPU）
+        _serverInfoTimer2 = setInterval(loadServerStatusBarAll, 10000);
+    }
+
+    function stopServerStatusBarRefresh() {
+        if (_serverInfoTimer1) { clearInterval(_serverInfoTimer1); _serverInfoTimer1 = null; }
+        if (_serverInfoTimer2) { clearInterval(_serverInfoTimer2); _serverInfoTimer2 = null; }
+    }
+
+    // 进入设置页时启动刷新
+    startServerStatusBarRefresh();
+
+    // 检测是否有活跃转码任务，有则自动展开转码管理
+    async function checkAndExpandTranscode() {
+        try {
+            const resp = await fetch('/api/transcode');
+            const data = await resp.json();
+            const hasActive = (data.queue && data.queue.some(t => t.status === 'processing' || t.status === 'queued'))
+                || (data.processing !== undefined && data.processing > 0)
+                || (data.queued !== undefined && data.queued > 0);
+            // 后台任务卡片当前处于收起状态且存在活跃任务 → 自动展开
+            const body = document.getElementById('taskBody');
+            if (hasActive && body && body.style.display === 'none') {
+                toggleTaskManager();
+            }
+        } catch(e) {}
+    }
+
+    // 页面加载时立即检测
+    checkAndExpandTranscode();
+    checkAndExpandMeta();
+
+    // 检测是否有活跃元数据补全任务，有则自动展开后台任务卡片
+    async function checkAndExpandMeta() {
+        try {
+            const resp = await fetch('/api/meta/status');
+            const data = await resp.json();
+            const needsPopulate = data.running || (data.total > 0 && data.cached < data.total);
+            const body = document.getElementById('taskBody');
+            if (needsPopulate && body && body.style.display === 'none') {
+                toggleTaskManager();
+            }
+        } catch(e) {}
+    }
+
+    // 页面从后台切回可见时也检测
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            checkAndExpandTranscode();
+            checkAndExpandMeta();
+        }
+    });
+
+    // 离开设置页时停止刷新（可选：页面卸载时清理）
+    window.addEventListener('beforeunload', stopServerStatusBarRefresh);
+
+    // ========== 清理缓存 ==========
+    window.toggleCacheClear = function() {
+        toggleDataManager();
+    };
+
+    window.clearCache = async function(type) {
+        const map = {
+            'thumbnail': { thumbnail_cache: true },
+            'video_meta': { video_meta_cache: true },
+            'series': { series_cache: true },
+            'all': { thumbnail_cache: true, video_meta_cache: true, series_cache: true }
+        };
+        const body = map[type] || {};
+        if (Object.keys(body).length === 0) return;
+        try {
+            const resp = await fetch('/api/cache/clear', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                showToast('<i data-lucide="check-circle"></i> 已清理: ' + data.cleared.join('、'));
+            } else {
+                showToast('<i data-lucide="x-circle"></i> 清理失败: ' + (data.error || ''));
+            }
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 清理失败: ' + e.message);
+        }
+    };
+
+    // ========== 隐藏视频管理 ==========
+    window.toggleHiddenSeries = function() {
+        toggleDataManager();
+    };
+
+    async function loadHiddenSeries() {
+        try {
+            const resp = await fetch('/api/hidden-series');
+            const data = await resp.json();
+            const container = document.getElementById('hiddenSeriesContent');
+            if (!data.ok || !data.list.length) {
+                container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);">暂无隐藏的视频</div>';
+                return;
+            }
+            const fmtSize = (b) => { if (b >= 1073741824) return (b/1073741824).toFixed(1) + ' GB'; if (b >= 1048576) return (b/1048576).toFixed(1) + ' MB'; return (b/1024).toFixed(1) + ' KB'; };
+            container.innerHTML = `
+                <div style="margin-bottom:12px;"><strong style="color:var(--text-primary);">${data.list.length}</strong> 个隐藏视频</div>
+                <div style="max-height:300px;overflow-y:auto;">
+                    ${data.list.map(item => `
+                        <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-color);">
+                            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;" title="${escapeHtml(item.path)}">${escapeHtml(item.name)}</span>
+                            <span style="font-size:11px;color:var(--text-secondary);">${fmtSize(item.size)}</span>
+                            <button class="btn btn-success btn-sm" onclick="restoreHidden('${escapeHtml(item.path.replace(/\\/g, '\\\\'))}')" title="恢复"><i data-lucide="rotate-ccw"></i></button>
+                            <button class="btn btn-danger btn-sm" onclick="removeHidden('${escapeHtml(item.path.replace(/\\/g, '\\\\'))}')" title="彻底删除"><i data-lucide="trash"></i></button>
+                        </div>
+                    `).join('')}
+                </div>`;
+            initIcons();
+        } catch(e) {
+            document.getElementById('hiddenSeriesContent').innerHTML = '<div style="color:#F45A9D;padding:12px;">加载失败</div>';
+        }
+    }
+
+    window.restoreHidden = async function(path) {
+        try {
+            const resp = await fetch('/api/hidden-series/restore', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({paths: [path]})
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                showToast('<i data-lucide="check-circle"></i> 已恢复');
+                loadHiddenSeries();
+            } else {
+                showToast('<i data-lucide="x-circle"></i> 恢复失败');
+            }
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 恢复失败: ' + e.message);
+        }
+    };
+
+    window.removeHidden = async function(path) {
+        if (!confirm('确定彻底删除？此操作不可恢复。')) return;
+        try {
+            const resp = await fetch('/api/hidden-series/clear', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({paths: [path]})
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                showToast('<i data-lucide="check-circle"></i> 已删除');
+                loadHiddenSeries();
+            } else {
+                showToast('<i data-lucide="x-circle"></i> 删除失败');
+            }
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 删除失败: ' + e.message);
+        }
+    };
+
+    window.saveAdvancedConfig = async function() {
+        try {
+            const config = {};
+            // 转码后删除原文件
+            const deleteEl = document.getElementById('cfgDeleteOriginal');
+            if (deleteEl) config.delete_original_after_transcode = deleteEl.checked;
+            // 自动转码为 MP4
+            const autoTranscodeEl = document.getElementById('cfgAutoTranscode');
+            if (autoTranscodeEl) config.auto_transcode = autoTranscodeEl.checked;
+            // GPU 转码开关
+            const gpuEl = document.getElementById('cfgGpuTranscode');
+            if (gpuEl && !gpuEl.disabled) config.gpu_transcode = gpuEl.checked;
+            // 其他高级设置
+            for (const [key, id] of Object.entries(CFG_FIELDS)) {
+                const el = document.getElementById(id);
+                if (el) config[key] = (key === 'server_host') ? el.value : (parseInt(el.value) || 0);
+            }
+            const resp = await fetch('/api/config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({config: config})
+            });
+            const data = await resp.json();
+            if (data.ok) {
+                showToast('<i data-lucide="check-circle"></i> 设置已保存，部分设置需重启服务器生效');
+                // 保存成功后退出编辑模式，更新备份值
+                _snapshotAdvancedValues();
+                _setAdvancedReadonly(true);
+            } else {
+                showToast('<i data-lucide="x-circle"></i> 保存失败: ' + (data.error || ''));
+            }
+        } catch(e) {
+            showToast('<i data-lucide="x-circle"></i> 保存失败: ' + e.message);
+        }
+    };
+
+    // ========== 高级设置编辑模式 ==========
+    var _advEditBackup = {};
+    function _snapshotAdvancedValues() {
+        _advEditBackup = {};
+        for (const [key, id] of Object.entries(CFG_FIELDS)) {
+            const el = document.getElementById(id);
+            if (el) _advEditBackup[id] = el.value;
+        }
+    }
+    function _setAdvancedReadonly(readonly) {
+        const grid = document.getElementById('advancedGrid');
+        if (!grid) return;
+        grid.querySelectorAll('input').forEach(function(inp) { inp.readOnly = readonly; });
+        document.getElementById('advEditBtn').style.display = readonly ? '' : 'none';
+        document.getElementById('advSaveBtn').style.display = readonly ? 'none' : '';
+        document.getElementById('advCancelBtn').style.display = readonly ? 'none' : '';
+        if (!readonly) _snapshotAdvancedValues();
+    }
+    window.toggleAdvancedEdit = function() {
+        var grid = document.getElementById('advancedGrid');
+        var firstInput = grid.querySelector('input[readonly]');
+        _setAdvancedReadonly(false);
+        if (firstInput) firstInput.focus();
+    };
+    window.cancelAdvancedEdit = function() {
+        for (const [key, id] of Object.entries(CFG_FIELDS)) {
+            const el = document.getElementById(id);
+            if (el && _advEditBackup[id] !== undefined) el.value = _advEditBackup[id];
+        }
+        _setAdvancedReadonly(true);
+    };
+
+    render();
+    initIcons();
+})();
+</script>
+</body>
+</html>

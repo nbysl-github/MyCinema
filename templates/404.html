@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>页面走丢啦 - 热播短剧</title>
+    <script src="/static/icons.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: "PingFang SC", "Microsoft YaHei", Roboto, sans-serif; }
+
+        /* ===== 主题变量（Win11 暗/亮模式适配）===== */
+        :root {
+            --bg-body: #f1f2f3;
+            --text-primary: #18191c;
+            --text-secondary: #61666d;
+            --brand-color: #fb7299;
+            --brand-hover: #ff4f7d;
+            --bg-nav: #ffffff;
+            --bg-card: #e8eaed;
+            --bg-card-hover: #dcdfe3;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-body: #18191C;
+                --text-primary: #fff;
+                --text-secondary: #9499A0;
+                --brand-color: #FB7299;
+                --brand-hover: #ff4f7d;
+                --bg-nav: #232427;
+                --bg-card: #2D2E32;
+                --bg-card-hover: #36373c;
+            }
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .top-nav {
+            position: fixed; top: 0; left: 0; right: 0;
+            height: 60px;
+            background-color: var(--bg-nav);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            z-index: 999;
+        }
+
+        .logo { color: var(--brand-color); font-size: 20px; font-weight: 700; text-decoration:none; }
+        .logo a { color: inherit; text-decoration: none; }
+
+        .search-bar {
+            width: 300px; height: 40px;
+            background-color: var(--bg-card); border: none;
+            border-radius: 8px; padding: 0 16px;
+            color: var(--text-primary); outline: none;
+        }
+        .search-bar:focus { background-color: var(--bg-card-hover); }
+
+        .error-container {
+            max-width: 1160px; width: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; gap: 30px; margin-top: 80px;
+        }
+
+        .error-illustration {
+            width: 300px; height: 300px;
+            display: flex; align-items: center; justify-content: center;
+            background-color: var(--bg-card);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .error-illustration i { width: 80px; height: 80px; color: var(--brand-color); }
+
+        .error-text { text-align: center; display: flex; flex-direction: column; gap: 16px; }
+        .error-title { font-size: 24px; font-weight: 700; color: var(--text-primary); }
+        .error-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.5; max-width: 500px; }
+
+        .error-actions { display: flex; gap: 16px; margin-top: 10px; }
+
+        .btn {
+            padding: 8px 16px; border-radius: 6px;
+            font-size: 14px; font-weight: 500;
+            cursor: pointer; transition: all 0.2s ease; border: none;
+        }
+        .btn-primary { background-color: var(--brand-color); color: #fff; }
+        .btn-primary:hover { background-color: var(--brand-hover); transform: scale(1.05); }
+        .btn-secondary { background-color: var(--bg-card); color: var(--text-primary); }
+        .btn-secondary:hover { background-color: var(--bg-card-hover); transform: scale(1.05); }
+
+        .footer-tip {
+            position: fixed; bottom: 20px;
+            font-size: 12px; color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- 顶部导航（匹配B站样式） -->
+    <div class="top-nav">
+        <a class="logo" href="/">我的影院</a>
+        <form action="/search" method="GET" style="display:flex;">
+            <input type="text" class="search-bar" name="keyword" placeholder="搜索你想看的短剧...">
+        </form>
+    </div>
+
+    <!-- 404核心内容区 -->
+    <div class="error-container">
+        <div class="error-illustration">
+            <i data-lucide="search"></i>
+        </div>
+        <div class="error-text">
+            <div class="error-title">哎呀，页面走丢啦～</div>
+            <div class="error-desc">
+                你访问的页面不存在、已被删除，或者输入的网址有误<br>
+                试试返回首页重新搜索，或者看看有没有你喜欢的短剧吧～
+            </div>
+        </div>
+        <div class="error-actions">
+            <button class="btn btn-primary" onclick="window.location.href='/'">返回首页</button>
+            <button class="btn btn-secondary" onclick="window.history.back()">返回上一页</button>
+        </div>
+    </div>
+
+    <!-- 底部提示 -->
+    <div class="footer-tip">© 2026 我的影院</div>
+    <script>initIcons();</script>
+</body>
+</html>

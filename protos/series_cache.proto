@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package mycinema;
+
+option go_package = "github.com/mycinema/protos;mycinema";
+
+import "categories.proto";
+
+// ===== 目录扫描缓存 (series_cache.json) =====
+// 顶层是一个 map，key 为目录路径
+
+message SeriesCacheFile {
+  // key = 目录路径
+  map<string, SeriesDirEntry> dirs = 1;
+}
+
+message SeriesDirEntry {
+  double mtime = 1;                      // 目录修改时间（Unix timestamp）
+  // 原始 JSON 中 "data" 可能是单个 object 或 list（混合目录返回多个）
+  oneof series_data {
+    SeriesEntry single = 2;              // 单个 series 条目
+    SeriesList multiple = 3;             // 多个 series 条目（混合目录）
+  }
+}
+
+message SeriesList {
+  repeated SeriesEntry items = 1;
+}
+
+message SeriesEntry {
+  string name = 1;                       // 系列名称
+  string path = 2;                       // 系列（唯一）路径
+  int32 total_episodes = 3;              // 总集数
+  int32 episode_count = 4;               // 实际集数
+  repeated VideoEntry videos = 5;        // 视频列表
+  string cover = 6;                      // 封面 URL
+  string orientation = 7;                // 方向："portrait" / "landscape"
+  Category category = 8;                 // 所属分类
+  bool is_abs = 9;                       // 是否绝对路径（_is_abs）
+  string abs_path = 10;                  // 绝对路径（_abs_path）
+  string flat_base_path = 11;            // 扁平目录基础路径（_flat_base_path，可选）
+  bool category_merged = 12;             // 是否已合并同分类（_category_merged，运行时字段）
+}
+
+message VideoEntry {
+  string filename = 1;                   // 文件名（如 "01.mp4"）
+  string filepath = 2;                   // 完整文件路径
+  string thumbnail = 3;                  // 缩略图 URL
+  string resolution = 4;                 // 分辨率标签（如 "1080P", "4K"）
+  bool needs_transcode = 5;              // 是否需要转码
+}

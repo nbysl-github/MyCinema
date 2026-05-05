@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package mycinema;
+
+option go_package = "github.com/mycinema/protos;mycinema";
+
+// ===== 分类配置 (categories.json) =====
+
+message CategoriesFile {
+  repeated Category categories = 1;
+}
+
+message Category {
+  string id = 1;                 // 分类唯一 ID（如 "cat_1777123042130"）
+  string name = 2;               // 分类名称（如 "短剧"）
+  string icon = 3;               // 图标名称（如 "tv", "film"）
+  string color = 4;              // 颜色值（如 "#FB7299"）
+  repeated string dirs = 5;      // 关联目录列表
+}

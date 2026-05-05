@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package mycinema;
+
+option go_package = "github.com/mycinema/protos;mycinema";
+
+// ===== 视频元数据缓存 (video_meta_cache.json) =====
+// 顶层是一个 map，key 为视频文件路径
+
+message VideoMetaCacheFile {
+  // key = 视频文件绝对路径
+  map<string, VideoMetaEntry> entries = 1;
+}
+
+message VideoMetaEntry {
+  int64 mtime = 1;               // 视频文件修改时间（Unix timestamp）
+  string orientation = 2;        // 方向："portrait" / "landscape"
+  int32 width = 3;               // 视频宽度
+  int32 height = 4;              // 视频高度
+  string resolution = 5;         // 分辨率字符串（如 "1920x1080"）
+  int64 file_size = 6;           // 文件大小（字节）
+  double duration = 7;           // 视频时长（秒，浮点数）
+}

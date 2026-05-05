@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title }}</title>
+    <script src="/static/icons.js"></script>
+    <script>
+        function handleCoverError(img, isDetail) {
+            const wrap = img.parentElement;
+            if (isDetail) {
+                wrap.innerHTML = '<div class="detail-cover-placeholder"><i data-lucide="film"></i></div>';
+            } else {
+                wrap.innerHTML = '<div class="card-cover-placeholder"><div class="icon"><i data-lucide="film"></i></div><div class="text">暂无封面</div></div>';
+            }
+            initIcons();
+        }
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-body: #f1f2f3;
+            --bg-nav: #ffffff;
+            --bg-card: #e8eaed;
+            --bg-card-hover: #dcdfe3;
+            --text-primary: #18191c;
+            --text-secondary: #61666d;
+            --border-color: #e3e5e7;
+            --shadow: 0 4px 16px rgba(0,0,0,0.10);
+            --nav-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            --brand-color: #fb7299;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-body: {{ bili_colors.bg_deep }};
+                --bg-nav: {{ bili_colors.bg_normal }};
+                --bg-card: {{ bili_colors.bg_card }};
+                --bg-card-hover: rgba(255,255,255,0.06);
+                --text-primary: #fff;
+                --text-secondary: {{ bili_colors.text_secondary }};
+                --border-color: {{ bili_colors.divider }};
+                --shadow: 0 4px 16px rgba(0,0,0,0.35);
+                --nav-shadow: 0 2px 8px rgba(0,0,0,0.25);
+                --brand-color: {{ bili_colors.brand_pink }};
+            }
+        }
+        body { font-family: "PingFang SC", "Microsoft YaHei", sans-serif; background-color: var(--bg-body); color: var(--text-primary); min-height: 100vh; }
+
+        .top-nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            height: 56px; background-color: var(--bg-nav);
+            display: flex; align-items: center; padding: 0 24px;
+            box-shadow: var(--nav-shadow);
+        }
+        .logo { font-size: 20px; font-weight: 700; color: var(--brand-color); text-decoration: none; margin-right: 24px; }
+        .nav-title { font-size: 15px; color: var(--text-primary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .back-btn {
+            background: var(--bg-card); color: var(--text-primary);
+            border: none; padding: 6px 16px; border-radius: 4px;
+            font-size: 13px; cursor: pointer; transition: all 0.2s;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 4px;
+        }
+        .back-btn:hover { background: var(--brand-color); color: #fff; }
+        .back-btn i { width: 16px; height: 16px; }
+
+        .main-content { margin-top: 76px; padding: 24px; max-width: 1000px; margin-left: auto; margin-right: auto; }
+
+        .detail-header { display: flex; gap: 24px; margin-bottom: 28px; }
+        .detail-cover-wrap {
+            width: 200px; height: 280px; border-radius: 8px; overflow: hidden; flex-shrink: 0;
+            background: var(--bg-card); box-shadow: var(--shadow);
+        }
+        .detail-cover-wrap.landscape { width: 280px; height: 158px; }
+        .detail-cover-wrap:hover > div { background: rgba(0,0,0,0.35) !important; }
+        .detail-cover-wrap:hover > div svg { opacity: 0.85 !important; }
+        .detail-cover-img { width: 100%; height: 100%; object-fit: cover; }
+        .detail-cover-placeholder {
+            width: 100%; height: 100%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-card-hover));
+            color: var(--text-secondary);
+        }
+        .detail-cover-placeholder i { width: 48px; height: 48px; margin-bottom: 8px; opacity: 0.5; }
+        .detail-info { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+        .detail-title { font-size: 22px; font-weight: 700; color: var(--text-primary); line-height: 1.4; }
+        .detail-meta { display: flex; flex-wrap: wrap; gap: 8px; }
+        .meta-tag {
+            display: inline-flex; align-items: center; gap: 4px;
+            background: var(--bg-card); color: var(--text-secondary);
+            padding: 4px 12px; border-radius: 16px; font-size: 13px;
+        }
+        .meta-tag i { width: 14px; height: 14px; }
+        .detail-actions { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+        .btn {
+            border: none; padding: 8px 20px; border-radius: 6px;
+            font-size: 14px; cursor: pointer; font-weight: 500; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 6px;
+            text-decoration: none;
+        }
+        .btn i { width: 16px; height: 16px; }
+        .btn-primary { background: var(--brand-color); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-secondary { background: var(--bg-card); color: var(--text-primary); }
+        .btn-secondary:hover { filter: brightness(0.95); }
+
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .section-title i { width: 20px; height: 20px; color: var(--brand-color); }
+
+        .video-table { background: var(--bg-nav); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow); margin-bottom: 24px; }
+        .table-header {
+            display: grid;
+            grid-template-columns: 90px 1fr 100px 100px 120px 100px;
+            gap: 8px; padding: 12px 16px;
+            background: var(--bg-card); font-size: 12px; font-weight: 600;
+            color: var(--text-secondary); align-items: center;
+        }
+        .table-row {
+            display: grid;
+            grid-template-columns: 90px 1fr 100px 100px 120px 100px;
+            gap: 8px; padding: 10px 16px;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center; font-size: 13px; transition: background 0.15s;
+        }
+        .table-row:hover { background: var(--bg-card-hover); }
+        .table-row:last-child { border-bottom: none; }
+        .table-row .ep-thumb {
+            width: 45px; height: 60px; border-radius: 4px; object-fit: cover;
+            background: var(--bg-card); flex-shrink: 0;
+        }
+        .table-row .ep-thumb.landscape {
+            width: 80px; height: 45px;
+        }
+        .table-row .ep-name {
+            overflow: hidden; text-overflow: ellipsis;
+            white-space: normal; display: -webkit-box;
+            -webkit-line-clamp: 2; line-clamp: 2;
+            -webkit-box-orient: vertical; box-orient: vertical;
+            font-size: 13px; line-height: 1.4;
+        }
+        .table-row .ep-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .table-row .ep-num {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--bg-card); color: var(--text-secondary);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 13px; font-weight: 600;
+        }
+        .ep-play-btn {
+            background: var(--brand-color); color: #fff; border: none;
+            padding: 5px 14px; border-radius: 4px; font-size: 12px;
+            cursor: pointer; transition: filter 0.15s;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .ep-play-btn:hover { filter: brightness(1.1); }
+        .ep-play-btn i { width: 12px; height: 12px; }
+
+        .overview-card { background: var(--bg-nav); border-radius: 10px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 24px; }
+        .overview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
+        .overview-item { display: flex; flex-direction: column; gap: 4px; }
+        .overview-label { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; }
+        .overview-label i { width: 14px; height: 14px; }
+        .overview-value { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+
+        /* 加载占位骨架 */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-card) 25%, var(--bg-card-hover) 50%, var(--bg-card) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 4px;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-text { height: 14px; margin: 4px 0; }
+        .skeleton-text.w60 { width: 60%; }
+        .skeleton-text.w40 { width: 40%; }
+        .skeleton-text.w80 { width: 80%; }
+        .detail-loading { color: var(--text-secondary); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+        .detail-loading i { width: 16px; height: 16px; animation: spin 1s linear infinite; }
+
+        /* 缩略图灯箱 */
+        .ep-thumb { cursor: pointer; transition: opacity 0.2s, transform 0.2s; }
+        .ep-thumb:hover { opacity: 0.8; transform: scale(1.05); }
+        .lightbox {
+            display: none; position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.92); align-items: center; justify-content: center;
+            flex-direction: column;
+        }
+        .lightbox.active { display: flex; }
+        .lightbox-img {
+            max-width: 85vw; max-height: 80vh; border-radius: 8px;
+            object-fit: contain; box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+            transition: opacity 0.2s, transform 0.2s;
+            cursor: pointer;
+        }
+        .lightbox-img:hover { transform: scale(1.02); }
+        .lightbox-play-hint {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 64px; height: 64px; border-radius: 50%;
+            background: rgba(0,0,0,0.55); border: 2px solid rgba(255,255,255,0.7);
+            display: flex; align-items: center; justify-content: center;
+            pointer-events: none; opacity: 0; transition: opacity 0.25s;
+        }
+        .lightbox-play-hint::after {
+            content: ''; display: block;
+            width: 0; height: 0;
+            border-style: solid; border-width: 10px 0 10px 18px;
+            border-color: transparent transparent transparent #fff;
+            margin-left: 4px;
+        }
+        .lightbox:hover .lightbox-play-hint { opacity: 1; }
+        .lightbox-info {
+            color: #ccc; font-size: 14px; margin-top: 12px;
+            text-align: center; max-width: 80vw; overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap;
+        }
+        .lightbox-close {
+            position: absolute; top: 16px; right: 24px;
+            background: none; border: none; color: #fff; font-size: 32px;
+            cursor: pointer; opacity: 0.7; transition: opacity 0.2s; line-height: 1;
+        }
+        .lightbox-close:hover { opacity: 1; }
+        .lightbox-arrow {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            background: rgba(255,255,255,0.12); border: none; color: #fff;
+            font-size: 28px; width: 48px; height: 48px; border-radius: 50%;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: background 0.2s;
+        }
+        .lightbox-arrow:hover { background: rgba(255,255,255,0.25); }
+        .lightbox-arrow.left { left: 20px; }
+        .lightbox-arrow.right { right: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 700px) {
+            .detail-header { flex-direction: column; }
+            .detail-cover-wrap { width: 140px; height: 196px; }
+            .table-header { display: none; }
+            .table-row { grid-template-columns: 50px 1fr auto; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+<nav class="top-nav">
+    <a class="logo" href="/">我的影院</a>
+    <span class="nav-title">{{ series.name }}</span>
+    <a class="back-btn" href="/?cat={{ series.category.get('id', '') if series.category else '' }}" onclick="if (window.history.length > 1) { window.history.back(); return false; }"><i data-lucide="home"></i> 返回列表</a>
+</nav>
+
+<main class="main-content">
+    <div class="detail-header">
+        <a class="detail-cover-wrap{% if orientation == 'landscape' %} landscape{% endif %}" href="/play/{{ series.path|urlencode }}/1" style="text-decoration:none;display:block;position:relative;">
+            {% if cover_url %}
+            <img class="detail-cover-img" src="{{ cover_url }}" alt="{{ series.name }}" onerror="handleCoverError(this, true)">
+            {% else %}
+            <div class="detail-cover-placeholder"><i data-lucide="film"></i></div>
+            {% endif %}
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0);transition:background 0.2s;cursor:pointer;border-radius:8px;">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="white" opacity="0" style="transition:opacity 0.2s;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.5));">
+                    <polygon points="5,3 19,12 5,21"/>
+                </svg>
+            </div>
+        </a>
+        <div class="detail-info">
+            <h1 class="detail-title">{{ series.name }}</h1>
+            <div class="detail-meta">
+                <span class="meta-tag"><i data-lucide="film"></i> {{ series.episode_count }} 集</span>
+                <span class="meta-tag" id="totalSizeTag"><i data-lucide="hard-drive"></i> <span id="totalSizeVal">加载中...</span></span>
+                <span class="meta-tag"><i data-lucide="monitor"></i> {{ '横向' if orientation == 'landscape' else '竖向' }}</span>
+            </div>
+            <div class="detail-actions">
+                <a class="btn btn-primary" href="/play/{{ series.path|urlencode }}/1"><i data-lucide="play"></i> 立即播放</a>
+                <a class="btn btn-secondary" href="/?cat={{ series.category.get('id', '') if series.category else '' }}" onclick="if (window.history.length > 1) { window.history.back(); return false; }"><i data-lucide="grid"></i> 返回列表</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="overview-card">
+        <h2 class="section-title"><i data-lucide="info"></i> 概览</h2>
+        <div class="overview-grid">
+            <div class="overview-item">
+                <span class="overview-label"><i data-lucide="film"></i> 剧集名称</span>
+                <span class="overview-value">{{ series.name }}</span>
+            </div>
+            <div class="overview-item">
+                <span class="overview-label"><i data-lucide="list"></i> 集数</span>
+                <span class="overview-value">{{ series.episode_count }} 集</span>
+            </div>
+            <div class="overview-item">
+                <span class="overview-label"><i data-lucide="hard-drive-download"></i> 总大小</span>
+                <span class="overview-value" id="overviewTotalSize">加载中...</span>
+            </div>
+            <div class="overview-item">
+                <span class="overview-label"><i data-lucide="monitor"></i> 方向</span>
+                <span class="overview-value">{% if orientation == 'landscape' %}横向视频{% else %}竖向视频{% endif %}</span>
+            </div>
+            <div class="overview-item">
+                <span class="overview-label"><i data-lucide="folder"></i> 路径</span>
+                <span class="overview-value" style="font-size:12px;word-break:break-all;">{{ series.path }}</span>
+            </div>
+            {% if series.category %}
+            <div class="overview-item">
+                <span class="overview-label"><i data-lucide="folder-cog"></i> 分类</span>
+                <span class="overview-value">{{ series.category.name }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="video-table">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 16px;">
+            <h2 class="section-title" style="margin-bottom:0;"><i data-lucide="list"></i> 剧集列表</h2>
+            <span class="detail-loading" id="loadingHint"><i data-lucide="loader"></i> 正在加载详细信息...</span>
+        </div>
+        <div class="table-header">
+            <span>集数</span>
+            <span>文件名</span>
+            <span>分辨率</span>
+            <span>时长</span>
+            <span>文件大小</span>
+            <span>操作</span>
+        </div>
+        <div id="videoTableBody">
+        {% set thumb_class = 'ep-thumb' + (' landscape' if orientation == 'landscape' else '') %}
+        {% for v in basic_videos %}
+        <div class="table-row" data-idx="{{ v.index }}">
+            {% if v.thumbnail %}
+            <img class="{{ thumb_class }}" src="{{ v.thumbnail }}" alt="{{ v.filename }}" data-lightbox="{{ v.index }}" data-idx="{{ v.index }}"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex'">
+            <div class="ep-num" style="display:none;">{{ v.index }}</div>
+            {% else %}
+            <div class="ep-num">{{ v.index }}</div>
+            {% endif %}
+            <div>
+                <div class="ep-name">{{ v.filename }}</div>
+                <div class="ep-meta" data-field="created"></div>
+            </div>
+            <span style="color:var(--text-secondary);font-size:12px;" data-field="resolution"><div class="skeleton skeleton-text w60"></div></span>
+            <span style="color:var(--text-secondary);font-size:12px;" data-field="duration"><div class="skeleton skeleton-text w40"></div></span>
+            <span style="color:var(--text-secondary);font-size:12px;" data-field="size"><div class="skeleton skeleton-text w60"></div></span>
+            <a class="ep-play-btn" href="/play/{{ series.path|urlencode }}/{{ v.index }}"><i data-lucide="play"></i> 播放</a>
+        </div>
+        {% endfor %}
+        </div>
+    </div>
+</main>
+
+<!-- 灯箱 -->
+<div class="lightbox" id="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
+    <button class="lightbox-arrow left" onclick="navLightbox(-1)">&#8249;</button>
+    <img class="lightbox-img" id="lbImg" src="" alt="">
+    <div class="lightbox-play-hint"></div>
+    <button class="lightbox-arrow right" onclick="navLightbox(1)">&#8250;</button>
+    <div class="lightbox-info" id="lbInfo"></div>
+</div>
+
+<script>
+initIcons();
+
+// ========== 缩略图灯箱 ==========
+const thumbList = []; // {idx, src, name}
+document.querySelectorAll('.ep-thumb[data-lightbox]').forEach(img => {
+    thumbList.push({ idx: parseInt(img.dataset.lightbox), src: img.src, name: img.alt });
+});
+let lbCurrent = -1;
+
+document.addEventListener('click', function(e) {
+    const img = e.target.closest('.ep-thumb[data-lightbox]');
+    if (img) {
+        e.preventDefault();
+        openLightbox(parseInt(img.dataset.lightbox));
+    }
+});
+
+function openLightbox(idx) {
+    const i = thumbList.findIndex(t => t.idx === idx);
+    if (i < 0) return;
+    lbCurrent = i;
+    showLbItem();
+    document.getElementById('lightbox').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+    document.body.style.overflow = '';
+    lbCurrent = -1;
+}
+function navLightbox(dir) {
+    if (lbCurrent < 0 || thumbList.length <= 1) return;
+    lbCurrent = (lbCurrent + dir + thumbList.length) % thumbList.length;
+    showLbItem();
+}
+function showLbItem() {
+    const item = thumbList[lbCurrent];
+    const img = document.getElementById('lbImg');
+    img.style.opacity = '0';
+    img.src = item.src;
+    img.onload = () => { img.style.opacity = '1'; };
+    document.getElementById('lbInfo').textContent = '第 ' + item.idx + ' 集 - ' + item.name + '  (' + (lbCurrent + 1) + '/' + thumbList.length + ')';
+}
+document.addEventListener('keydown', e => {
+    if (lbCurrent < 0) return;
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowLeft') navLightbox(-1);
+    else if (e.key === 'ArrowRight') navLightbox(1);
+});
+document.getElementById('lbImg').addEventListener('click', e => {
+    if (lbCurrent < 0) return;
+    const item = thumbList[lbCurrent];
+    window.location.href = '/play/{{ series.path|urlencode }}/' + item.idx;
+});
+
+// 异步加载详细信息
+(async function() {
+    try {
+        const resp = await fetch('/api/detail/{{ series.path|urlencode }}');
+        if (!resp.ok) return;
+        const data = await resp.json();
+
+        // 更新总大小
+        const sizeStr = data.total_size_str || '未知';
+        document.getElementById('totalSizeVal').textContent = sizeStr;
+        document.getElementById('overviewTotalSize').textContent = sizeStr;
+
+        // 填充每行详细信息
+        const rows = document.querySelectorAll('#videoTableBody .table-row');
+        rows.forEach(row => {
+            const idx = parseInt(row.dataset.idx);
+            const info = data.videos.find(v => v.index === idx);
+            if (!info) return;
+            const created = row.querySelector('[data-field="created"]');
+            const res = row.querySelector('[data-field="resolution"]');
+            const dur = row.querySelector('[data-field="duration"]');
+            const size = row.querySelector('[data-field="size"]');
+            if (created) created.textContent = info.created_time || '';
+            if (res) res.textContent = info.resolution;
+            if (dur) dur.textContent = info.duration_str;
+            if (size) size.textContent = info.file_size_str;
+        });
+    } catch (e) {
+        console.error('加载详细信息失败:', e);
+    } finally {
+        const hint = document.getElementById('loadingHint');
+        if (hint) hint.style.display = 'none';
+    }
+})();
+</script>
+</body>
+</html>

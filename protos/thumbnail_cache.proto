@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package mycinema;
+
+option go_package = "github.com/mycinema/protos;mycinema";
+
+// ===== 缩略图缓存 (thumbnail_cache.json) =====
+// 顶层是一个 map，key 为视频文件路径
+
+message ThumbnailCacheFile {
+  // key = 视频文件绝对路径
+  map<string, ThumbnailEntry> entries = 1;
+}
+
+message ThumbnailEntry {
+  string thumb_path = 1;         // 缩略图文件路径
+  double mtime = 2;              // 视频文件修改时间（Unix timestamp）
+}

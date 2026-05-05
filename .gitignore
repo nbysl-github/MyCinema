@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Binary cache files (generated at runtime)
+*.pb
+!protos/*.proto
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Large dependencies (put in different repo or install via package manager)
+ffmpeg/
+
+# Backup directories
+backup_latest/
+MyCinema20260502-v110/
+
+# Temporary files
+*.tmp
+*.swp
+*~
