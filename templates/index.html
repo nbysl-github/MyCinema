@@ -584,6 +584,8 @@
             {% if grouped and not request.query_params.get('keyword') %}
                 {# 按分类分组显示 #}
                 {% for cat_id, group in grouped.items() %}
+                {% set portrait_series = group.series | selectattr('orientation', 'equalto', 'portrait') | list %}
+                {% set landscape_series = group.series | selectattr('orientation', 'equalto', 'landscape') | list %}
                 <div class="category-section" data-category="{{ cat_id }}" data-cat-name="{{ group.category.name }}" data-cat-color="{{ group.category.color }}">
                     <div class="section-title-bar">
                         <span class="section-icon" onclick="rescanCategory('{{ cat_id }}', '{{ group.category.name|escape }}')" title="重新扫描该分类" style="cursor: pointer;"><i data-lucide="{{ group.category.icon or 'folder' }}"></i></span>
@@ -591,8 +593,11 @@
                         <span class="section-count">{{ group.series|length }} 个</span>
                     </div>
                     <div class="section-divider"></div>
-                    <div class="series-grid{% if group.series[0].orientation == 'landscape' %} landscape-grid{% endif %}" id="grid-{{ cat_id }}">
-                        {% for s in group.series %}
+                    
+                    {# 竖屏视频 #}
+                    {% if portrait_series %}
+                    <div class="series-grid" id="grid-{{ cat_id }}-portrait">
+                        {% for s in portrait_series %}
                         <a class="series-card" href="/play/{{ s['path']|urlencode }}/1"
                            data-orientation="{{ s.orientation }}">
                             <div class="card-cover-wrap{% if s.orientation == 'landscape' %} landscape{% endif %}">
@@ -617,11 +622,44 @@
                         </a>
                         {% endfor %}
                     </div>
+                    {% endif %}
+                    
+                    {# 横屏视频 #}
+                    {% if landscape_series %}
+                    <div class="series-grid landscape-grid" id="grid-{{ cat_id }}-landscape">
+                        {% for s in landscape_series %}
+                        <a class="series-card" href="/play/{{ s['path']|urlencode }}/1"
+                           data-orientation="{{ s.orientation }}">
+                            <div class="card-cover-wrap{% if s.orientation == 'landscape' %} landscape{% endif %}">
+                                {% if s.cover %}
+                                    <img class="card-cover-img" src="{{ s.cover }}" alt="{{ s.name }}" loading="lazy"
+                                         onerror="handleCoverError(this, false)">
+                                {% else %}
+                                    <div class="card-cover-placeholder">
+                                        <div class="icon"><i data-lucide="film"></i></div>
+                                        <div class="text">{{ s.name[:8] }}...</div>
+                                    </div>
+                                {% endif %}
+                                <span class="episode-badge">{{ s.episode_count }}集</span>
+                                {% if s.videos and s.videos[0].resolution %}<span class="res-tag">{{ s.videos[0].resolution }}</span>{% endif %}
+                                </span>
+                                <button class="card-favorite-btn" onclick="event.stopPropagation(); event.preventDefault(); toggleFavorite(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" title="收藏"><i data-lucide="heart"></i></button>
+                                <button class="card-detail-btn" onclick="event.stopPropagation(); event.preventDefault(); window.location.href=`/detail/{{ s['path']|urlencode }}`" title="详情"><i data-lucide="info"></i></button>
+                                <button class="card-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); deleteVideo(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" data-series="{{ 'true' if s.episode_count > 1 or s.get('episodes') else 'false' }}" title="从列表移除">×</button>
+                            </div>
+                            <div class="card-title">{{ s.name }}</div>
+                            <div class="card-meta">全{{ s.total_episodes }}集</div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
 
                 {# 未分配到任何分类的剧集 #}
                 {% if unassigned_series %}
+                {% set unassigned_portrait = unassigned_series | selectattr('orientation', 'equalto', 'portrait') | list %}
+                {% set unassigned_landscape = unassigned_series | selectattr('orientation', 'equalto', 'landscape') | list %}
                 <div class="category-section" data-category="_unassigned_">
                     <div class="section-title-bar">
                         <span class="section-icon"><i data-lucide="folder-open"></i></span>
@@ -629,8 +667,11 @@
                         <span class="section-count">{{ unassigned_series|length }} 个</span>
                     </div>
                     <div class="section-divider" style="background:#999"></div>
+                    
+                    {# 竖屏视频 #}
+                    {% if unassigned_portrait %}
                     <div class="series-grid">
-                        {% for s in unassigned_series %}
+                        {% for s in unassigned_portrait %}
                         <a class="series-card" href="/play/{{ s['path']|urlencode }}/1"
                            data-orientation="{{ s.orientation }}">
                             <div class="card-cover-wrap{% if s.orientation == 'landscape' %} landscape{% endif %}">
@@ -655,12 +696,48 @@
                         </a>
                         {% endfor %}
                     </div>
+                    {% endif %}
+                    
+                    {# 横屏视频 #}
+                    {% if unassigned_landscape %}
+                    <div class="series-grid landscape-grid">
+                        {% for s in unassigned_landscape %}
+                        <a class="series-card" href="/play/{{ s['path']|urlencode }}/1"
+                           data-orientation="{{ s.orientation }}">
+                            <div class="card-cover-wrap{% if s.orientation == 'landscape' %} landscape{% endif %}">
+                                {% if s.cover %}
+                                    <img class="card-cover-img" src="{{ s.cover }}" alt="{{ s.name }}" loading="lazy"
+                                         onerror="handleCoverError(this, false)">
+                                {% else %}
+                                    <div class="card-cover-placeholder">
+                                        <div class="icon"><i data-lucide="film"></i></div>
+                                        <div class="text">{{ s.name[:8] }}...</div>
+                                    </div>
+                                {% endif %}
+                                <span class="episode-badge">{{ s.episode_count }}集</span>
+                                {% if s.videos and s.videos[0].resolution %}<span class="res-tag">{{ s.videos[0].resolution }}</span>{% endif %}
+                                </span>
+                                <button class="card-favorite-btn" onclick="event.stopPropagation(); event.preventDefault(); toggleFavorite(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" title="收藏"><i data-lucide="heart"></i></button>
+                                <button class="card-detail-btn" onclick="event.stopPropagation(); event.preventDefault(); window.location.href=`/detail/{{ s['path']|urlencode }}`" title="详情"><i data-lucide="info"></i></button>
+                                <button class="card-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); deleteVideo(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" data-series="{{ 'true' if s.episode_count > 1 or s.get('episodes') else 'false' }}" title="从列表移除">×</button>
+                            </div>
+                            <div class="card-title">{{ s.name }}</div>
+                            <div class="card-meta">全{{ s.total_episodes }}集</div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
             {% else %}
                 {# 搜索结果或无分组时平铺显示 #}
+                {% set search_portrait = series_list | selectattr('orientation', 'equalto', 'portrait') | list %}
+                {% set search_landscape = series_list | selectattr('orientation', 'equalto', 'landscape') | list %}
+                
+                {# 竖屏视频 #}
+                {% if search_portrait %}
                 <div class="series-grid">
-                    {% for s in series_list %}
+                    {% for s in search_portrait %}
                     <a class="series-card" href="/play/{{ s['path']|urlencode }}/1"
                        data-orientation="{{ s.orientation }}">
                         <div class="card-cover-wrap{% if s.orientation == 'landscape' %} landscape{% endif %}">
@@ -685,6 +762,37 @@
                     </a>
                     {% endfor %}
                 </div>
+                {% endif %}
+                
+                {# 横屏视频 #}
+                {% if search_landscape %}
+                <div class="series-grid landscape-grid">
+                    {% for s in search_landscape %}
+                    <a class="series-card" href="/play/{{ s['path']|urlencode }}/1"
+                       data-orientation="{{ s.orientation }}">
+                        <div class="card-cover-wrap{% if s.orientation == 'landscape' %} landscape{% endif %}">
+                            {% if s.cover %}
+                                <img class="card-cover-img" src="{{ s.cover }}" alt="{{ s.name }}" loading="lazy"
+                                     onerror="handleCoverError(this, false)">
+                            {% else %}
+                                <div class="card-cover-placeholder">
+                                    <div class="icon"><i data-lucide="film"></i></div>
+                                    <div class="text">{{ s.name[:8] }}...</div>
+                                </div>
+                            {% endif %}
+                            <span class="episode-badge">{{ s.episode_count }}集</span>
+                            {% if s.videos and s.videos[0].resolution %}<span class="res-tag">{{ s.videos[0].resolution }}</span>{% endif %}
+                            </span>
+                            <button class="card-favorite-btn" onclick="event.stopPropagation(); event.preventDefault(); toggleFavorite(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" title="收藏"><i data-lucide="heart"></i></button>
+                            <button class="card-detail-btn" onclick="event.stopPropagation(); event.preventDefault(); window.location.href=`/detail/{{ s['path']|urlencode }}`" title="详情"><i data-lucide="info"></i></button>
+                            <button class="card-delete-btn" onclick="event.stopPropagation(); event.preventDefault(); deleteVideo(this)" data-path="{{ s['path']|e }}" data-name="{{ s.name }}" data-series="{{ 'true' if s.episode_count > 1 or s.get('episodes') else 'false' }}" title="从列表移除">×</button>
+                        </div>
+                        <div class="card-title">{{ s.name }}</div>
+                        <div class="card-meta">全{{ s.total_episodes }}集</div>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
             {% endif %}
         </div>
         {% else %}
